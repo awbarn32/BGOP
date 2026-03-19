@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/products', label: 'Products', icon: '📦', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/templates', label: 'Templates', icon: '📋', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/expenses', label: 'Expenses', icon: '💰', roles: ['owner', 'pa'] as UserRole[] },
+  { href: '/messages', label: 'Messages', icon: '💬', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/reports', label: 'Reports', icon: '📊', roles: ['owner', 'pa'] as UserRole[] },
 ]
 

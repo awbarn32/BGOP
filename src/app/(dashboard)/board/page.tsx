@@ -26,6 +26,15 @@ import { BUCKET_ORDER, BUCKET_DEFAULT_STATUS } from '@/types/kanban'
 import type { Bucket, User } from '@/types/domain'
 import type { JobCard as JobCardType } from '@/types/kanban'
 
+const REVENUE_STREAMS = [
+  { value: 'service', label: 'Service' },
+  { value: 'sourcing', label: 'Sourcing' },
+  { value: 'track_day', label: 'Track Day' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'dlt', label: 'DLT' },
+  { value: 'bike_hotel', label: 'Bike Hotel' },
+]
+
 export default function BoardPage() {
   const { toast } = useToast()
   const [jobs, setJobs] = useState<JobCardType[]>([])
@@ -36,6 +45,11 @@ export default function BoardPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
+
+  // Board toolbar filters
+  const [search, setSearch] = useState('')
+  const [filterMechanic, setFilterMechanic] = useState('')
+  const [filterStream, setFilterStream] = useState('')
 
   const channelRef = useRef<ReturnType<typeof subscribeToKanbanUpdates> | null>(null)
 
@@ -255,9 +269,20 @@ export default function BoardPage() {
 
   const canReorder = userRole === 'owner' || userRole === 'pa'
 
+  const searchLower = search.toLowerCase()
+  const filteredJobs = jobs.filter((j) => {
+    if (search && !j.customer.full_name.toLowerCase().includes(searchLower) &&
+        !j.vehicle.model.toLowerCase().includes(searchLower) &&
+        !j.vehicle.make.toLowerCase().includes(searchLower) &&
+        !j.description.toLowerCase().includes(searchLower)) return false
+    if (filterMechanic && j.mechanic_id !== filterMechanic) return false
+    if (filterStream && j.revenue_stream !== filterStream) return false
+    return true
+  })
+
   const jobsByBucket = BUCKET_ORDER.reduce<Record<Bucket, JobCardType[]>>(
     (acc, bucket) => {
-      acc[bucket] = jobs
+      acc[bucket] = filteredJobs
         .filter((j) => j.bucket === bucket)
         .sort((a, b) => b.priority - a.priority) // highest priority at top
       return acc
@@ -280,6 +305,62 @@ export default function BoardPage() {
           </div>
         }
       />
+
+      {/* Board toolbar */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800 flex-shrink-0 flex-wrap">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">🔍</span>
+          <input
+            type="text"
+            placeholder="Search customer, bike…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-7 pr-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+
+        {/* Mechanic filter */}
+        <select
+          value={filterMechanic}
+          onChange={(e) => setFilterMechanic(e.target.value)}
+          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+          <option value="">All mechanics</option>
+          {mechanics.map((m) => (
+            <option key={m.id} value={m.id}>{m.full_name}</option>
+          ))}
+        </select>
+
+        {/* Revenue stream filter */}
+        <select
+          value={filterStream}
+          onChange={(e) => setFilterStream(e.target.value)}
+          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+          <option value="">All streams</option>
+          {REVENUE_STREAMS.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+
+        {/* Clear filters */}
+        {(search || filterMechanic || filterStream) && (
+          <button
+            onClick={() => { setSearch(''); setFilterMechanic(''); setFilterStream('') }}
+            className="px-2.5 py-1.5 text-xs text-gray-500 hover:text-white bg-gray-800 border border-gray-700 rounded-lg transition-colors"
+          >
+            Clear
+          </button>
+        )}
+
+        {/* Job count when filtered */}
+        {(search || filterMechanic || filterStream) && (
+          <span className="text-xs text-gray-500 ml-1">
+            {filteredJobs.length} of {jobs.length} jobs
+          </span>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">

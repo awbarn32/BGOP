@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge, RevenueStreamBadge } from '@/components/ui/StatusBadge'
@@ -81,6 +81,19 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [mechanicEdit, setMechanicEdit] = useState<string>('')
   const [notesEdit, setNotesEdit] = useState('')
   const [notesChanged, setNotesChanged] = useState(false)
+
+  // Quote builder state
+  const [addingItem, setAddingItem] = useState(false)
+  const [itemType, setItemType] = useState<'labour' | 'part'>('labour')
+  const [itemDesc, setItemDesc] = useState('')
+  const [itemQty, setItemQty] = useState('1')
+  const [itemSalePrice, setItemSalePrice] = useState('')
+  const [itemCostPrice, setItemCostPrice] = useState('')
+  const [itemSaving, setItemSaving] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
+  const [productResults, setProductResults] = useState<{ id: string; name: string; sale_price: number; cost_price: number | null; sku: string }[]>([])
+  const [productSearching, setProductSearching] = useState(false)
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // LINE messaging panel
   const [msgText, setMsgText] = useState('')
@@ -183,6 +196,70 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
       status: 'archived' as JobStatus,
     })
     onClose()
+  }
+
+  function handleProductSearchChange(val: string) {
+    setProductSearch(val)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!val.trim()) { setProductResults([]); return }
+    setProductSearching(true)
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products?search=${encodeURIComponent(val)}&active=true&pageSize=8`)
+        const json = await res.json()
+        setProductResults(json.data ?? [])
+      } catch { setProductResults([]) }
+      finally { setProductSearching(false) }
+    }, 300)
+  }
+
+  function selectProduct(p: typeof productResults[0]) {
+    setItemDesc(p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name)
+    setItemSalePrice(String(p.sale_price))
+    setItemCostPrice(p.cost_price != null ? String(p.cost_price) : '')
+    setProductSearch('')
+    setProductResults([])
+  }
+
+  async function handleAddLineItem() {
+    if (!job || !itemDesc.trim() || !itemSalePrice) return
+    setItemSaving(true)
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/line-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          line_type: itemType,
+          description: itemDesc.trim(),
+          quantity: parseFloat(itemQty) || 1,
+          sale_price: parseFloat(itemSalePrice),
+          cost_price: itemCostPrice ? parseFloat(itemCostPrice) : null,
+          cost_estimated: !itemCostPrice,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) { toast(json.error?.message ?? 'Failed to add item', 'error'); return }
+      // Refresh job to get updated line_items
+      const refreshed = await fetch(`/api/jobs/${job.id}`)
+      const rJson = await refreshed.json()
+      setJob(rJson.data)
+      // Reset form
+      setItemDesc(''); setItemQty('1'); setItemSalePrice(''); setItemCostPrice('')
+      setAddingItem(false)
+      toast('Item added', 'success')
+    } catch { toast('Network error', 'error') }
+    finally { setItemSaving(false) }
+  }
+
+  async function handleDeleteLineItem(itemId: string) {
+    if (!job) return
+    try {
+      await fetch(`/api/jobs/${job.id}/line-items/${itemId}`, { method: 'DELETE' })
+      setJob((prev) => prev ? {
+        ...prev,
+        line_items: prev.line_items.filter((li) => li.id !== itemId)
+      } : prev)
+    } catch { toast('Failed to delete item', 'error') }
   }
 
   const isOpen = !!jobId
@@ -345,13 +422,130 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
               </div>
             )}
 
-            {/* Line items */}
-            {job.line_items.length > 0 && (
-              <div className="px-5 py-4 border-b border-gray-800">
-                <p className="text-xs text-gray-500 mb-2">Line Items</p>
+            {/* Quote builder — line items */}
+            <div className="px-5 py-4 border-b border-gray-800">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-500">Quote / Line Items</p>
+                {!addingItem && (
+                  <button
+                    onClick={() => setAddingItem(true)}
+                    className="text-xs px-2 py-1 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                  >
+                    + Add Item
+                  </button>
+                )}
+              </div>
+
+              {/* Add item form */}
+              {addingItem && (
+                <div className="mb-3 p-3 bg-gray-800/60 rounded-xl border border-gray-700 space-y-2">
+                  {/* Product search */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search product catalog…"
+                      value={productSearch}
+                      onChange={(e) => handleProductSearchChange(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {productSearching && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">…</span>
+                    )}
+                    {productResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                        {productResults.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => selectProduct(p)}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-800 text-xs transition-colors"
+                          >
+                            <span className="text-white">{p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name}</span>
+                            <span className="text-gray-500 ml-2">฿{p.sale_price.toLocaleString()}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Type + description */}
+                  <div className="flex gap-2">
+                    <select
+                      value={itemType}
+                      onChange={(e) => setItemType(e.target.value as 'labour' | 'part')}
+                      className="px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
+                    >
+                      <option value="labour">Labour</option>
+                      <option value="part">Part</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Description"
+                      value={itemDesc}
+                      onChange={(e) => setItemDesc(e.target.value)}
+                      className="flex-1 px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* Qty + prices */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-0.5">Qty</p>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={itemQty}
+                        onChange={(e) => setItemQty(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-0.5">Sale ฿</p>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={itemSalePrice}
+                        onChange={(e) => setItemSalePrice(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-0.5">Cost ฿</p>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={itemCostPrice}
+                        onChange={(e) => setItemCostPrice(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => { setAddingItem(false); setItemDesc(''); setItemSalePrice(''); setItemCostPrice(''); setProductSearch(''); setProductResults([]) }}
+                      className="flex-1 py-1.5 rounded-lg border border-gray-600 text-xs text-gray-400 hover:border-gray-500 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddLineItem}
+                      disabled={itemSaving || !itemDesc.trim() || !itemSalePrice}
+                      className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs text-white font-medium transition-colors"
+                    >
+                      {itemSaving ? 'Adding…' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Line items list */}
+              {job.line_items.length > 0 ? (
                 <div className="space-y-1.5">
                   {job.line_items.map((li) => (
-                    <div key={li.id} className="flex items-center justify-between text-xs">
+                    <div key={li.id} className="flex items-center justify-between text-xs group">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
                           li.line_type === 'labour'
@@ -368,9 +562,16 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                           <span className="text-orange-400 flex-shrink-0">SC</span>
                         )}
                       </div>
-                      <span className="text-gray-300 font-mono flex-shrink-0 ml-2">
-                        ฿{(li.sale_price * li.quantity).toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <span className="text-gray-300 font-mono">฿{(li.sale_price * li.quantity).toLocaleString()}</span>
+                        <button
+                          onClick={() => handleDeleteLineItem(li.id)}
+                          className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Remove item"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <div className="border-t border-gray-700 pt-1.5 flex justify-between text-sm font-semibold">
@@ -378,8 +579,10 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                     <span className="text-white font-mono">฿{lineItemsTotal.toLocaleString()}</span>
                   </div>
                 </div>
-              </div>
-            )}
+              ) : !addingItem ? (
+                <p className="text-xs text-gray-600 text-center py-3">No items yet — click + Add Item to build the quote</p>
+              ) : null}
+            </div>
 
             {/* Status history */}
             {job.status_history.length > 0 && (
