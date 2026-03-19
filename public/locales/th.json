@@ -1,0 +1,136 @@
+{
+  "nav": {
+    "board": "บอร์ดงาน",
+    "jobs": "งาน",
+    "customers": "ลูกค้า",
+    "vehicles": "รถ",
+    "products": "สินค้า",
+    "templates": "แม่แบบงาน",
+    "invoices": "ใบเสร็จ",
+    "expenses": "ค่าใช้จ่าย",
+    "reports": "รายงาน",
+    "logout": "ออกจากระบบ"
+  },
+  "buckets": {
+    "new_requests": "คำขอใหม่",
+    "intake": "รับรถ",
+    "available_jobs": "งานรอดำเนินการ",
+    "wip": "กำลังซ่อม",
+    "outbound": "คืนรถ"
+  },
+  "status": {
+    "new": "ใหม่",
+    "under_review": "กำลังตรวจสอบ",
+    "awaiting_customer": "รอลูกค้า",
+    "quote_sent": "ส่งใบเสนอราคาแล้ว",
+    "confirmed": "ยืนยันแล้ว",
+    "awaiting_drop_off": "รอนำรถมาส่ง",
+    "driver_assigned": "มอบหมายคนขับแล้ว",
+    "picked_up": "รับรถแล้ว",
+    "in_transit": "กำลังเดินทาง",
+    "received_at_shop": "รับรถที่ร้านแล้ว",
+    "awaiting_assignment": "รอมอบหมายช่าง",
+    "awaiting_parts": "รออะไหล่",
+    "awaiting_approval": "รอการอนุมัติ",
+    "work_started": "เริ่มงานแล้ว",
+    "paused_parts": "หยุดชั่วคราว — อะไหล่",
+    "paused_approval": "หยุดชั่วคราว — รออนุมัติ",
+    "work_completed": "งานเสร็จแล้ว",
+    "awaiting_pickup": "รอลูกค้ามารับ",
+    "driver_assigned_delivery": "มอบหมายคนขับแล้ว",
+    "out_for_delivery": "กำลังส่งรถ",
+    "returned_to_customer": "คืนรถแล้ว",
+    "withdrawn": "ยกเลิก",
+    "rejected": "ปฏิเสธ",
+    "archived": "เก็บถาวร"
+  },
+  "revenue_streams": {
+    "service": "ซ่อมบำรุง",
+    "ecu": "ECU / ปรับแต่ง",
+    "sourcing": "หารถ",
+    "commission": "ค่านายหน้า",
+    "track_day": "แทร็กเดย์",
+    "transport": "ขนส่ง",
+    "dlt": "กรมการขนส่ง",
+    "bike_hotel": "ฝากรถ"
+  },
+  "roles": {
+    "owner": "เจ้าของ",
+    "pa": "ผู้ช่วย",
+    "mechanic": "ช่าง",
+    "driver": "คนขับ"
+  },
+  "mechanic": {
+    "start_work": "เริ่มงาน",
+    "complete_work": "งานเสร็จ",
+    "flag_additional": "พบงานเพิ่ม",
+    "notes": "บันทึกช่าง",
+    "my_jobs": "งานของฉัน",
+    "no_jobs": "ไม่มีงานที่มอบหมาย"
+  },
+  "driver": {
+    "en_route": "กำลังไป",
+    "arrived": "ถึงแล้ว",
+    "loaded": "โหลดแล้ว",
+    "in_transit": "กำลังส่ง",
+    "delivered": "ส่งแล้ว",
+    "my_orders": "คำสั่งงานของฉัน",
+    "no_orders": "ไม่มีคำสั่งงาน"
+  },
+  "actions": {
+    "send_quote": "ส่งใบเสนอราคา",
+    "confirm": "ยืนยัน",
+    "assign_mechanic": "มอบหมายช่าง",
+    "mark_returned": "บันทึกคืนรถ",
+    "record_payment": "บันทึกการชำระ",
+    "new_job": "งานใหม่",
+    "from_template": "จากแม่แบบ",
+    "export_csv": "ส่งออก CSV",
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "delete": "ลบ",
+    "edit": "แก้ไข",
+    "create": "สร้าง",
+    "search": "ค้นหา",
+    "filter": "กรอง",
+    "clear": "ล้าง"
+  },
+  "invoice": {
+    "status": {
+      "quote": "ใบเสนอราคา",
+      "approved": "อนุมัติแล้ว",
+      "deposit_paid": "ชำระมัดจำแล้ว",
+      "pending": "รอชำระ",
+      "paid": "ชำระแล้ว",
+      "void": "ยกเลิก"
+    },
+    "payment_method": {
+      "cash": "เงินสด",
+      "bank_transfer": "โอนเงิน",
+      "promptpay": "พร้อมเพย์",
+      "credit_card": "บัตรเครดิต",
+      "other": "อื่นๆ"
+    }
+  },
+  "common": {
+    "loading": "กำลังโหลด…",
+    "error": "เกิดข้อผิดพลาด",
+    "no_results": "ไม่พบผลลัพธ์",
+    "required": "จำเป็น",
+    "optional": "ไม่จำเป็น",
+    "active": "ใช้งานอยู่",
+    "inactive": "ไม่ใช้งาน",
+    "dormant": "ไม่ใช้งาน",
+    "thb": "บาท",
+    "hours": "ชั่วโมง",
+    "days": "วัน",
+    "today": "วันนี้"
+  },
+  "auth": {
+    "sign_in": "เข้าสู่ระบบ",
+    "email": "อีเมล",
+    "password": "รหัสผ่าน",
+    "signing_in": "กำลังเข้าสู่ระบบ…",
+    "invalid_credentials": "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  }
+}

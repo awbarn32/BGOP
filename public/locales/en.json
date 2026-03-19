@@ -1,0 +1,136 @@
+{
+  "nav": {
+    "board": "Job Board",
+    "jobs": "Jobs",
+    "customers": "Customers",
+    "vehicles": "Vehicles",
+    "products": "Products",
+    "templates": "Templates",
+    "invoices": "Invoices",
+    "expenses": "Expenses",
+    "reports": "Reports",
+    "logout": "Log Out"
+  },
+  "buckets": {
+    "new_requests": "New Requests",
+    "intake": "Intake",
+    "available_jobs": "Available Jobs",
+    "wip": "Work in Progress",
+    "outbound": "Outbound"
+  },
+  "status": {
+    "new": "New",
+    "under_review": "Under Review",
+    "awaiting_customer": "Awaiting Customer",
+    "quote_sent": "Quote Sent",
+    "confirmed": "Confirmed",
+    "awaiting_drop_off": "Awaiting Drop-off",
+    "driver_assigned": "Driver Assigned",
+    "picked_up": "Picked Up",
+    "in_transit": "In Transit",
+    "received_at_shop": "Received",
+    "awaiting_assignment": "Awaiting Assignment",
+    "awaiting_parts": "Awaiting Parts",
+    "awaiting_approval": "Awaiting Approval",
+    "work_started": "Work Started",
+    "paused_parts": "Paused — Parts",
+    "paused_approval": "Paused — Approval",
+    "work_completed": "Work Completed",
+    "awaiting_pickup": "Awaiting Pickup",
+    "driver_assigned_delivery": "Driver Assigned",
+    "out_for_delivery": "Out for Delivery",
+    "returned_to_customer": "Returned",
+    "withdrawn": "Withdrawn",
+    "rejected": "Rejected",
+    "archived": "Archived"
+  },
+  "revenue_streams": {
+    "service": "Service & Repair",
+    "ecu": "ECU / Tuning",
+    "sourcing": "Bike Sourcing",
+    "commission": "Sales Commission",
+    "track_day": "Track Day",
+    "transport": "Transport",
+    "dlt": "DLT / Documents",
+    "bike_hotel": "Bike Hotel"
+  },
+  "roles": {
+    "owner": "Owner",
+    "pa": "PA",
+    "mechanic": "Mechanic",
+    "driver": "Driver"
+  },
+  "mechanic": {
+    "start_work": "Start Work",
+    "complete_work": "Complete Work",
+    "flag_additional": "Flag Additional Work",
+    "notes": "Mechanic Notes",
+    "my_jobs": "My Jobs",
+    "no_jobs": "No jobs assigned"
+  },
+  "driver": {
+    "en_route": "En Route",
+    "arrived": "Arrived",
+    "loaded": "Loaded",
+    "in_transit": "In Transit",
+    "delivered": "Delivered",
+    "my_orders": "My Work Orders",
+    "no_orders": "No work orders assigned"
+  },
+  "actions": {
+    "send_quote": "Send Quote",
+    "confirm": "Confirm",
+    "assign_mechanic": "Assign Mechanic",
+    "mark_returned": "Mark Returned",
+    "record_payment": "Record Payment",
+    "new_job": "New Job",
+    "from_template": "From Template",
+    "export_csv": "Export CSV",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear"
+  },
+  "invoice": {
+    "status": {
+      "quote": "Quote",
+      "approved": "Approved",
+      "deposit_paid": "Deposit Paid",
+      "pending": "Pending",
+      "paid": "Paid",
+      "void": "Void"
+    },
+    "payment_method": {
+      "cash": "Cash",
+      "bank_transfer": "Bank Transfer",
+      "promptpay": "PromptPay",
+      "credit_card": "Credit Card",
+      "other": "Other"
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "no_results": "No results found",
+    "required": "Required",
+    "optional": "Optional",
+    "active": "Active",
+    "inactive": "Inactive",
+    "dormant": "Dormant",
+    "thb": "THB",
+    "hours": "hours",
+    "days": "days",
+    "today": "Today"
+  },
+  "auth": {
+    "sign_in": "Sign In",
+    "email": "Email",
+    "password": "Password",
+    "signing_in": "Signing in…",
+    "invalid_credentials": "Invalid email or password"
+  }
+}
