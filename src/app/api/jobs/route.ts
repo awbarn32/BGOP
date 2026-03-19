@@ -65,12 +65,43 @@ export async function POST(request: Request) {
   const parsed = CreateJobSchema.safeParse(body)
   if (!parsed.success) return validationError('Validation failed', parsed.error.flatten())
 
+  const { template_id, ...jobData } = parsed.data
+
   const { data, error } = await supabase
     .from('jobs')
-    .insert(parsed.data)
+    .insert({ ...jobData, template_id: template_id ?? null })
     .select(CARD_SELECT)
     .single()
 
   if (error) return serverError(error.message)
+
+  // If a template was selected, copy its line items into the new job
+  if (template_id && data) {
+    const { data: templateItems } = await supabase
+      .from('job_template_items')
+      .select('line_type, description, quantity, sort_order, product:products(id, sku, sale_price, cost_price)')
+      .eq('template_id', template_id)
+      .order('sort_order')
+
+    if (templateItems && templateItems.length > 0) {
+      const lineItems = templateItems.map((item) => {
+        const product = Array.isArray(item.product) ? item.product[0] : item.product
+        return {
+          job_id: data.id,
+          line_type: item.line_type,
+          description: item.description,
+          quantity: item.quantity,
+          sale_price: (product as { sale_price?: number } | null)?.sale_price ?? 0,
+          cost_price: (product as { cost_price?: number | null } | null)?.cost_price ?? null,
+          sku: (product as { sku?: string } | null)?.sku ?? null,
+          product_id: (product as { id?: string } | null)?.id ?? null,
+          sort_order: item.sort_order,
+          cost_estimated: !(product as { cost_price?: number | null } | null)?.cost_price,
+        }
+      })
+      await supabase.from('job_line_items').insert(lineItems)
+    }
+  }
+
   return Response.json({ data }, { status: 201 })
 }

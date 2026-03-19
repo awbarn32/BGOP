@@ -106,17 +106,23 @@ export function NewJobForm({ defaultBucket = 'new_requests', onSuccess, onCancel
     setErrors((prev) => ({ ...prev, [key]: '' }))
   }
 
-  // Auto-fill description from template
+  const [templateItems, setTemplateItems] = useState<{ description: string; line_type: string }[]>([])
+
+  // Auto-fill description from template and load its items for preview
   function handleTemplateChange(templateId: string) {
     setField('template_id', templateId)
+    setTemplateItems([])
     if (!templateId) return
     const tmpl = templates.find((t) => t.id === templateId)
-    if (tmpl && !form.description.trim()) {
-      setField('description', tmpl.name)
+    if (tmpl) {
+      if (!form.description.trim()) setField('description', tmpl.name.includes(' / ') ? tmpl.name.split(' / ')[1] : tmpl.name)
+      if (!form.revenue_stream) setField('revenue_stream', tmpl.revenue_stream as RevenueStream)
     }
-    if (tmpl && !form.revenue_stream) {
-      setField('revenue_stream', tmpl.revenue_stream as RevenueStream)
-    }
+    // Fetch template items for preview
+    fetch(`/api/templates/${templateId}`)
+      .then((r) => r.json())
+      .then((j) => setTemplateItems(j.data?.items ?? []))
+      .catch(() => {})
   }
 
   function validate(): boolean {
@@ -255,7 +261,7 @@ export function NewJobForm({ defaultBucket = 'new_requests', onSuccess, onCancel
       )}
 
       {/* Template (optional) */}
-      <FormField label="Template" htmlFor="template_id" hint="Pre-fills description and revenue stream">
+      <FormField label="Template" htmlFor="template_id" hint="Pre-fills description, revenue stream, and line items">
         <select
           id="template_id"
           className={selectClass}
@@ -270,6 +276,26 @@ export function NewJobForm({ defaultBucket = 'new_requests', onSuccess, onCancel
           ))}
         </select>
       </FormField>
+
+      {/* Template items preview */}
+      {form.template_id && templateItems.length > 0 && (
+        <div className="bg-indigo-900/20 border border-indigo-800/40 rounded-xl px-4 py-3">
+          <p className="text-xs text-indigo-400 font-medium mb-2">Items that will be added from template:</p>
+          <div className="space-y-1">
+            {templateItems.map((item, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
+                <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
+                  item.line_type === 'labour' ? 'bg-blue-900/40 text-blue-300' : 'bg-amber-900/40 text-amber-300'
+                }`}>
+                  {item.line_type === 'labour' ? 'L' : 'P'}
+                </span>
+                <span>{item.description.includes(' / ') ? item.description.split(' / ')[1] : item.description}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-600 mt-2">You can edit these items after the job is created</p>
+        </div>
+      )}
 
       {/* Description */}
       <FormField label="Description" htmlFor="description" required error={errors.description}
