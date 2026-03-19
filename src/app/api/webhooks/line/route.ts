@@ -159,7 +159,15 @@ async function handleTextMessage(lineUserId?: string, text?: string) {
     .single()
 
   if (!customer) {
+    // Unknown LINE user — log with no customer_id so PA can see it and link them
     console.log('[LINE webhook] inbound message from unknown LINE user:', lineUserId)
+    await supabase.from('message_log').insert({
+      customer_id: null,
+      channel: 'line',
+      message_type: 'inbound',
+      content: `[Unknown LINE user: ${lineUserId}]\n${text}`,
+      status: 'delivered',
+    })
     return
   }
 
