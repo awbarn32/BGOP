@@ -1,6 +1,6 @@
 'use client'
 
-import { useDraggable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { StatusBadge, RevenueStreamBadge } from '@/components/ui/StatusBadge'
 import type { JobCard as JobCardType } from '@/types/kanban'
@@ -25,14 +25,16 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onClick, isDragOverlay = false, position, canReorder, isFirst, isLast, onMoveUp, onMoveDown }: JobCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: job.id,
     data: { job },
+    disabled: isDragOverlay,
   })
 
-  const style = transform
-    ? { transform: CSS.Translate.toString(transform) }
-    : undefined
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
 
   const englishDesc = job.description.includes(' / ')
     ? job.description.split(' / ')[1].slice(0, 60)
@@ -48,10 +50,10 @@ export function JobCard({ job, onClick, isDragOverlay = false, position, canReor
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
+      ref={isDragOverlay ? undefined : setNodeRef}
+      style={isDragOverlay ? undefined : style}
+      {...(isDragOverlay ? {} : listeners)}
+      {...(isDragOverlay ? {} : attributes)}
       onClick={() => onClick(job)}
       className={`
         bg-gray-800 border border-gray-700 rounded-lg p-3 cursor-pointer select-none

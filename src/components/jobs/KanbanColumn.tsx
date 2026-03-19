@@ -1,6 +1,7 @@
 'use client'
 
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { JobCard } from './JobCard'
 import { BUCKET_CONFIG } from '@/types/kanban'
 import type { Bucket } from '@/types/domain'
@@ -42,19 +43,21 @@ export function KanbanColumn({ bucket, jobs, onCardClick, canReorder, onPriority
           ${isOver ? 'bg-gray-700/60 border-gray-500' : 'bg-gray-800/30'}
         `}
       >
-        {jobs.map((job, idx) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            onClick={onCardClick}
-            position={idx + 1}
-            canReorder={canReorder}
-            isFirst={idx === 0}
-            isLast={idx === jobs.length - 1}
-            onMoveUp={() => onPriorityChange?.(job.id, 'up')}
-            onMoveDown={() => onPriorityChange?.(job.id, 'down')}
-          />
-        ))}
+        <SortableContext items={jobs.map((j) => j.id)} strategy={verticalListSortingStrategy}>
+          {jobs.map((job, idx) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              onClick={onCardClick}
+              position={idx + 1}
+              canReorder={canReorder}
+              isFirst={idx === 0}
+              isLast={idx === jobs.length - 1}
+              onMoveUp={() => onPriorityChange?.(job.id, 'up')}
+              onMoveDown={() => onPriorityChange?.(job.id, 'down')}
+            />
+          ))}
+        </SortableContext>
 
         {jobs.length === 0 && !isOver && (
           <div className="flex items-center justify-center h-20 text-gray-600 text-xs">

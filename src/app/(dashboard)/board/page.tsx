@@ -11,6 +11,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -106,40 +107,110 @@ export default function BoardPage() {
   async function handleDragEnd(event: DragEndEvent) {
     setActiveJob(null)
     const { active, over } = event
-    if (!over) return
+    if (!over || active.id === over.id) return
 
-    const jobId = active.id as string
-    const newBucket = over.id as Bucket
-    const job = jobs.find((j) => j.id === jobId)
-    if (!job || job.bucket === newBucket) return
+    const activeId = active.id as string
+    const overId = over.id as string
+    const activeJobData = jobs.find((j) => j.id === activeId)
+    if (!activeJobData) return
 
-    const newStatus = BUCKET_DEFAULT_STATUS[newBucket]
-    const prevBucket = job.bucket
-    const prevStatus = job.status
+    const isBucketTarget = (BUCKET_ORDER as string[]).includes(overId)
 
-    // Optimistic update
-    setJobs((prev) =>
-      prev.map((j) => j.id === jobId ? { ...j, bucket: newBucket, status: newStatus } : j)
-    )
+    if (isBucketTarget) {
+      // ── Cross-column: dropped directly onto an empty column drop zone ──
+      const newBucket = overId as Bucket
+      if (activeJobData.bucket === newBucket) return
+      const newStatus = BUCKET_DEFAULT_STATUS[newBucket]
+      const prevBucket = activeJobData.bucket
+      const prevStatus = activeJobData.status
 
-    try {
-      const res = await fetch(`/api/jobs/${jobId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bucket: newBucket, status: newStatus }),
-      })
-      if (!res.ok) {
-        // Revert
+      setJobs((prev) =>
+        prev.map((j) => j.id === activeId ? { ...j, bucket: newBucket, status: newStatus } : j)
+      )
+      try {
+        const res = await fetch(`/api/jobs/${activeId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucket: newBucket, status: newStatus }),
+        })
+        if (!res.ok) {
+          setJobs((prev) =>
+            prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
+          )
+          toast('Failed to move job', 'error')
+        }
+      } catch {
         setJobs((prev) =>
-          prev.map((j) => j.id === jobId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
+          prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
         )
         toast('Failed to move job', 'error')
       }
-    } catch {
-      setJobs((prev) =>
-        prev.map((j) => j.id === jobId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
-      )
-      toast('Failed to move job', 'error')
+    } else {
+      // ── Dropped onto another card ──
+      const overJobData = jobs.find((j) => j.id === overId)
+      if (!overJobData) return
+
+      if (activeJobData.bucket === overJobData.bucket) {
+        // Same column reorder — reassign priorities based on new order
+        const bucketJobs = jobs
+          .filter((j) => j.bucket === activeJobData.bucket)
+          .sort((a, b) => b.priority - a.priority)
+
+        const oldIdx = bucketJobs.findIndex((j) => j.id === activeId)
+        const newIdx = bucketJobs.findIndex((j) => j.id === overId)
+        const newOrder = arrayMove(bucketJobs, oldIdx, newIdx)
+
+        // Priorities: top card = length, bottom = 1
+        const total = newOrder.length
+        const updates = newOrder.map((j, i) => ({ id: j.id, priority: total - i }))
+
+        // Optimistic
+        setJobs((prev) =>
+          prev.map((j) => {
+            const u = updates.find((u) => u.id === j.id)
+            return u ? { ...j, priority: u.priority } : j
+          })
+        )
+
+        // Persist all affected cards
+        await Promise.all(
+          updates.map((u) =>
+            fetch(`/api/jobs/${u.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ priority: u.priority }),
+            })
+          )
+        )
+      } else {
+        // Cross-column: dropped onto a card in a different column
+        const newBucket = overJobData.bucket
+        const newStatus = BUCKET_DEFAULT_STATUS[newBucket]
+        const prevBucket = activeJobData.bucket
+        const prevStatus = activeJobData.status
+
+        setJobs((prev) =>
+          prev.map((j) => j.id === activeId ? { ...j, bucket: newBucket, status: newStatus } : j)
+        )
+        try {
+          const res = await fetch(`/api/jobs/${activeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: newBucket, status: newStatus }),
+          })
+          if (!res.ok) {
+            setJobs((prev) =>
+              prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
+            )
+            toast('Failed to move job', 'error')
+          }
+        } catch {
+          setJobs((prev) =>
+            prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
+          )
+          toast('Failed to move job', 'error')
+        }
+      }
     }
   }
 
