@@ -30,6 +30,7 @@ export interface JobCard {
     id: string
     full_name: string
   } | null
+  scope_changes: { id: string; status: string }[]
 }
 
 // Valid statuses per bucket

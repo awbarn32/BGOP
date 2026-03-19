@@ -26,6 +26,9 @@ const DETAIL_SELECT = `
   status_history:job_status_history(
     id, from_status, to_status, from_bucket, to_bucket, changed_at,
     changed_by, notes
+  ),
+  scope_changes(
+    id, description, amount_thb, status, mechanic_notes, created_at
   )
 `
 

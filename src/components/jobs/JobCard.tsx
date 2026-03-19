@@ -47,6 +47,7 @@ export function JobCard({ job, onClick, isDragOverlay = false, position, canReor
     (Date.now() - new Date(job.created_at).getTime()) / 86_400_000
   )
   const isStale = daysSince >= 3
+  const hasPendingScope = job.scope_changes?.some((s) => s.status === 'flagged')
 
   return (
     <div
@@ -91,6 +92,9 @@ export function JobCard({ job, onClick, isDragOverlay = false, position, canReor
             }`}>
               {job.logistics_type === 'pickup' ? 'PU' : 'DO'}
             </span>
+          )}
+          {hasPendingScope && !isDragOverlay && (
+            <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" title="Scope change needs review" />
           )}
           {isStale && (
             <span className="text-xs text-orange-400" title={`${daysSince} days old`}>

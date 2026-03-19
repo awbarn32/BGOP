@@ -14,7 +14,8 @@ const CARD_SELECT = `
   owner_notify_threshold_thb, created_at, updated_at,
   customer:customers(id, full_name, phone, line_id),
   vehicle:vehicles(id, make, model, year, license_plate),
-  mechanic:users(id, full_name)
+  mechanic:users(id, full_name),
+  scope_changes(id, status)
 `
 
 export async function GET(request: Request) {

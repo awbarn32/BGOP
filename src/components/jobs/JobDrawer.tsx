@@ -39,6 +39,14 @@ interface JobDetail extends JobCard {
     to_status: string
     changed_at: string
   }[]
+  scope_changes: {
+    id: string
+    description: string
+    amount_thb: number
+    status: string
+    mechanic_notes: string | null
+    created_at: string
+  }[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -260,6 +268,26 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
         line_items: prev.line_items.filter((li) => li.id !== itemId)
       } : prev)
     } catch { toast('Failed to delete item', 'error') }
+  }
+
+  async function handleScopeAction(scopeId: string, action: 'approve' | 'decline') {
+    const label = action === 'approve' ? 'Approve' : 'Decline'
+    if (!confirm(`${label} this scope change?`)) return
+    try {
+      const res = await fetch(`/api/scope-changes/${scopeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const json = await res.json()
+      if (!res.ok) { toast(json.error?.message ?? 'Failed', 'error'); return }
+      // Refresh job
+      const refreshed = await fetch(`/api/jobs/${job!.id}`)
+      const rJson = await refreshed.json()
+      setJob(rJson.data)
+      onJobUpdated(rJson.data)
+      toast(action === 'approve' ? 'Scope change approved — line item added' : 'Scope change declined', action === 'approve' ? 'success' : 'error')
+    } catch { toast('Network error', 'error') }
   }
 
   const isOpen = !!jobId
@@ -608,6 +636,63 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                         <StatusBadge status={h.to_status as JobStatus} size="sm" />
                       </div>
                     ))}
+                </div>
+              </div>
+            )}
+
+            {/* Scope changes — PA review */}
+            {job.scope_changes && job.scope_changes.length > 0 && (
+              <div className="px-5 py-4 border-b border-gray-800">
+                <p className="text-xs text-gray-500 mb-2">
+                  Scope Changes
+                  {job.scope_changes.some((s) => s.status === 'flagged') && (
+                    <span className="ml-2 text-orange-400 text-xs font-medium">● Needs Review</span>
+                  )}
+                </p>
+                <div className="space-y-3">
+                  {job.scope_changes.map((sc) => (
+                    <div key={sc.id} className={`rounded-xl p-3 border ${
+                      sc.status === 'flagged' ? 'bg-orange-950/30 border-orange-800/50' :
+                      sc.status === 'approved' ? 'bg-emerald-950/30 border-emerald-800/50' :
+                      'bg-red-950/30 border-red-800/50'
+                    }`}>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <p className="text-sm text-gray-200 flex-1">{sc.description}</p>
+                        <span className="font-mono text-sm text-white flex-shrink-0">
+                          ฿{sc.amount_thb.toLocaleString()}
+                        </span>
+                      </div>
+                      {sc.mechanic_notes && (
+                        <p className="text-xs text-gray-500 mb-2 italic">{sc.mechanic_notes}</p>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          sc.status === 'approved' ? 'bg-emerald-900 text-emerald-300' :
+                          sc.status === 'declined' ? 'bg-red-900 text-red-300' :
+                          'bg-orange-900 text-orange-300'
+                        }`}>
+                          {sc.status === 'approved' ? '✓ Approved' :
+                           sc.status === 'declined' ? '✕ Declined' : '⏳ Flagged — Pending Review'}
+                        </span>
+                        {sc.status === 'flagged' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleScopeAction(sc.id, 'decline')}
+                              className="px-3 py-1 rounded-lg text-xs font-medium bg-red-900/50 hover:bg-red-900 text-red-300 transition-colors"
+                            >
+                              Decline
+                            </button>
+                            <button
+                              onClick={() => handleScopeAction(sc.id, 'approve')}
+                              className="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white transition-colors"
+                            >
+                              Approve
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
