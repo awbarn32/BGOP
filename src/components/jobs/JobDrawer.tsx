@@ -82,6 +82,12 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [notesEdit, setNotesEdit] = useState('')
   const [notesChanged, setNotesChanged] = useState(false)
 
+  // LINE messaging panel
+  const [msgText, setMsgText] = useState('')
+  const [msgLang, setMsgLang] = useState<'en' | 'th'>('en')
+  const [sendingMsg, setSendingMsg] = useState(false)
+  const [msgResult, setMsgResult] = useState<{ ok: boolean; text: string } | null>(null)
+
   useEffect(() => {
     if (!jobId) { setJob(null); return }
     setLoading(true)
@@ -142,6 +148,32 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
       bucket: 'outbound' as Bucket,
       status: 'awaiting_pickup' as JobStatus,
     })
+  }
+
+  async function handleSendMessage() {
+    if (!job || !msgText.trim()) return
+    setSendingMsg(true)
+    setMsgResult(null)
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/send-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: msgText.trim(), sender_language: msgLang }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setMsgResult({ ok: false, text: json.error?.message ?? 'Failed to send' })
+      } else if (json.skipped) {
+        setMsgResult({ ok: false, text: json.reason })
+      } else {
+        setMsgResult({ ok: true, text: json.demo ? 'Demo mode — message logged but not sent' : 'Message sent via LINE ✓' })
+        setMsgText('')
+      }
+    } catch {
+      setMsgResult({ ok: false, text: 'Network error' })
+    } finally {
+      setSendingMsg(false)
+    }
   }
 
   async function handleArchive() {
@@ -376,6 +408,63 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                 </div>
               </div>
             )}
+
+            {/* LINE Message Panel */}
+            <div className="px-5 py-4 border-b border-gray-800">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-xs text-gray-500">Send Message via LINE</p>
+                {job.customer.line_id ? (
+                  <span className="text-xs px-1.5 py-0.5 bg-green-900/40 text-green-400 rounded">
+                    LINE connected
+                  </span>
+                ) : (
+                  <span className="text-xs px-1.5 py-0.5 bg-gray-800 text-gray-500 rounded">
+                    No LINE ID
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => setMsgLang('en')}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                    msgLang === 'en' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  I&apos;m typing in English
+                </button>
+                <button
+                  onClick={() => setMsgLang('th')}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                    msgLang === 'th' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  พิมพ์เป็นภาษาไทย
+                </button>
+              </div>
+              <textarea
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[72px]"
+                value={msgText}
+                onChange={(e) => { setMsgText(e.target.value); setMsgResult(null) }}
+                placeholder={msgLang === 'th' ? 'พิมพ์ข้อความ... (AI จะแปลเป็นภาษาอังกฤษอัตโนมัติ)' : 'Type your message... (AI will auto-translate to Thai)'}
+                disabled={sendingMsg}
+              />
+              <p className="text-xs text-gray-600 mt-1 mb-2">
+                Claude AI will translate your message — the customer receives both languages.
+              </p>
+              {msgResult && (
+                <p className={`text-xs mb-2 ${msgResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+                  {msgResult.text}
+                </p>
+              )}
+              <Button
+                size="sm"
+                disabled={!msgText.trim() || sendingMsg}
+                loading={sendingMsg}
+                onClick={handleSendMessage}
+              >
+                {sendingMsg ? 'Translating & Sending…' : 'Send via LINE'}
+              </Button>
+            </div>
 
             {/* Actions */}
             <div className="px-5 py-4 space-y-2">
