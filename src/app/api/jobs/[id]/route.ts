@@ -29,7 +29,8 @@ const DETAIL_SELECT = `
   ),
   scope_changes(
     id, description, amount_thb, status, mechanic_notes, created_at
-  )
+  ),
+  invoice:invoices(id, invoice_number, status, total_amount, deposit_amount, paid_amount)
 `
 
 export async function GET(_request: Request, { params }: Params) {

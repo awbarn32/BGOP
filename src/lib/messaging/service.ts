@@ -9,7 +9,7 @@
  * 5. Demo mode suppresses actual sends
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 import { pushMessage, isDemoMode } from '@/lib/line/client'
 import type { LineMessage } from '@/lib/line/client'
@@ -24,18 +24,18 @@ export async function translateText(
   text: string,
   targetLanguage: 'th' | 'en'
 ): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.warn('[messaging] ANTHROPIC_API_KEY not set — skipping translation')
+    console.warn('[messaging] OPENAI_API_KEY not set — skipping translation')
     return text
   }
 
   try {
-    const client = new Anthropic({ apiKey })
+    const client = new OpenAI({ apiKey })
     const langLabel = targetLanguage === 'th' ? 'Thai' : 'English'
 
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 1024,
       messages: [
         {
@@ -45,9 +45,8 @@ export async function translateText(
       ],
     })
 
-    const content = message.content[0]
-    if (content.type === 'text') return content.text.trim()
-    return text
+    const translated = response.choices[0]?.message?.content?.trim()
+    return translated ?? text
   } catch (err) {
     console.error('[messaging] translation error', err)
     return text
@@ -133,13 +132,14 @@ export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
     return { ok: true, skipped: 'no_consent' }
   }
 
-  // ── 2. Rate limit: max 3 automated messages per job ────────────────────────
-  if (!opts.skipChecks && opts.jobId) {
+  // ── 2. Rate limit: max 3 automated messages per job (PA direct messages exempt) ──
+  if (!opts.skipChecks && opts.jobId && opts.messageType !== 'direct_message') {
     const { count } = await supabase
       .from('message_log')
       .select('id', { count: 'exact', head: true })
       .eq('job_id', opts.jobId)
       .eq('channel', 'line')
+      .neq('message_type', 'direct_message')
 
     if ((count ?? 0) >= 3) {
       console.warn(`[messaging] rate limit reached for job ${opts.jobId}`)

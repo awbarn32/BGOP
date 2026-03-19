@@ -47,6 +47,14 @@ interface JobDetail extends JobCard {
     mechanic_notes: string | null
     created_at: string
   }[]
+  invoice: {
+    id: string
+    invoice_number: string
+    status: string
+    total_amount: number
+    deposit_amount: number | null
+    paid_amount: number | null
+  }[] | null
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -290,6 +298,32 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     } catch { toast('Network error', 'error') }
   }
 
+  async function handleSendQuote() {
+    if (!job) return
+    if (!confirm('Mark quote as sent and update job status to Quote Sent?')) return
+    await patch({ status: 'quote_sent' as JobStatus })
+  }
+
+  async function handleConfirmJob() {
+    if (!job) return
+    const inv = job.invoice?.[0]
+    if (!confirm('Confirm the job? This marks the customer as approved and locks the quote.')) return
+    // Update job status
+    await patch({ status: 'confirmed' as JobStatus })
+    // Update invoice status to approved
+    if (inv) {
+      await fetch(`/api/invoices/${inv.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' }),
+      })
+      // Refresh job to get updated invoice
+      const refreshed = await fetch(`/api/jobs/${job.id}`)
+      const rJson = await refreshed.json()
+      setJob(rJson.data)
+    }
+  }
+
   const isOpen = !!jobId
 
   const lineItemsTotal = job?.line_items.reduce((sum, li) => sum + li.sale_price * li.quantity, 0) ?? 0
@@ -362,6 +396,194 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                 </div>
               </div>
             </div>
+
+            {/* Quote / Invoice */}
+            {(() => {
+              const inv = job.invoice?.[0] ?? null
+              const INVOICE_STATUS_STYLES: Record<string, string> = {
+                quote: 'bg-blue-900/40 text-blue-300',
+                approved: 'bg-emerald-900/40 text-emerald-300',
+                deposit_paid: 'bg-teal-900/40 text-teal-300',
+                pending: 'bg-amber-900/40 text-amber-300',
+                paid: 'bg-green-900/40 text-green-300',
+                void: 'bg-gray-800 text-gray-500',
+              }
+              const INVOICE_STATUS_LABELS: Record<string, string> = {
+                quote: 'Quote — Draft',
+                approved: 'Confirmed',
+                deposit_paid: 'Deposit Paid',
+                pending: 'Awaiting Payment',
+                paid: 'Paid ✓',
+                void: 'Void',
+              }
+              return (
+                <div className="px-5 py-4 border-b border-gray-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-gray-300">Quote / Invoice</p>
+                      {inv && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${INVOICE_STATUS_STYLES[inv.status] ?? 'bg-gray-800 text-gray-400'}`}>
+                          {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
+                        </span>
+                      )}
+                      {inv?.invoice_number && (
+                        <span className="text-xs text-gray-600 font-mono">{inv.invoice_number}</span>
+                      )}
+                    </div>
+                    {!addingItem && (
+                      <button
+                        onClick={() => setAddingItem(true)}
+                        className="text-xs px-2 py-1 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                      >
+                        + Add Item
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Add item form */}
+                  {addingItem && (
+                    <div className="mb-3 p-3 bg-gray-800/60 rounded-xl border border-gray-700 space-y-2">
+                      {/* Product search */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search product catalog…"
+                          value={productSearch}
+                          onChange={(e) => handleProductSearchChange(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                        {productSearching && (
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">…</span>
+                        )}
+                        {productResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                            {productResults.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => selectProduct(p)}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-800 text-xs transition-colors"
+                              >
+                                <span className="text-white">{p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name}</span>
+                                <span className="text-gray-500 ml-2">฿{p.sale_price.toLocaleString()}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Type + description */}
+                      <div className="flex gap-2">
+                        <select
+                          value={itemType}
+                          onChange={(e) => setItemType(e.target.value as 'labour' | 'part')}
+                          className="px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
+                        >
+                          <option value="labour">Labour</option>
+                          <option value="part">Part</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Description"
+                          value={itemDesc}
+                          onChange={(e) => setItemDesc(e.target.value)}
+                          className="flex-1 px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                      {/* Qty + prices */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="text-xs text-gray-600 mb-0.5">Qty</p>
+                          <input type="number" min="0.01" step="0.01" value={itemQty} onChange={(e) => setItemQty(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 mb-0.5">Sale ฿</p>
+                          <input type="number" min="0" placeholder="0" value={itemSalePrice} onChange={(e) => setItemSalePrice(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 mb-0.5">Cost ฿</p>
+                          <input type="number" min="0" placeholder="0" value={itemCostPrice} onChange={(e) => setItemCostPrice(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => { setAddingItem(false); setItemDesc(''); setItemSalePrice(''); setItemCostPrice(''); setProductSearch(''); setProductResults([]) }}
+                          className="flex-1 py-1.5 rounded-lg border border-gray-600 text-xs text-gray-400 hover:border-gray-500 transition-colors"
+                        >Cancel</button>
+                        <button
+                          onClick={handleAddLineItem}
+                          disabled={itemSaving || !itemDesc.trim() || !itemSalePrice}
+                          className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs text-white font-medium transition-colors"
+                        >{itemSaving ? 'Adding…' : 'Add'}</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Line items list */}
+                  {job.line_items.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {job.line_items.map((li) => (
+                        <div key={li.id} className="flex items-center justify-between text-xs group">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
+                              li.line_type === 'labour' ? 'bg-blue-900/40 text-blue-300' : 'bg-amber-900/40 text-amber-300'
+                            }`}>
+                              {li.line_type === 'labour' ? 'L' : 'P'}
+                            </span>
+                            <span className="text-gray-300 truncate">
+                              {li.description.includes(' / ') ? li.description.split(' / ')[1] : li.description}
+                              {li.quantity !== 1 && ` ×${li.quantity}`}
+                            </span>
+                            {li.is_scope_change && <span className="text-orange-400 flex-shrink-0">SC</span>}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <span className="text-gray-300 font-mono">฿{(li.sale_price * li.quantity).toLocaleString()}</span>
+                            <button onClick={() => handleDeleteLineItem(li.id)}
+                              className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title="Remove item">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="border-t border-gray-700 pt-1.5 flex justify-between text-sm font-semibold">
+                        <span className="text-gray-400">Total</span>
+                        <span className="text-white font-mono">฿{lineItemsTotal.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ) : !addingItem ? (
+                    <p className="text-xs text-gray-600 text-center py-3">No items yet — click + Add Item to build the quote</p>
+                  ) : null}
+
+                  {/* Quote action buttons */}
+                  {inv && inv.status !== 'void' && (
+                    <div className="mt-3 flex gap-2">
+                      {job.status !== 'quote_sent' && job.status !== 'confirmed' && inv.status === 'quote' && job.line_items.length > 0 && (
+                        <button
+                          onClick={handleSendQuote}
+                          disabled={saving}
+                          className="flex-1 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                        >
+                          📤 Send Quote
+                        </button>
+                      )}
+                      {job.status === 'quote_sent' && (
+                        <button
+                          onClick={handleConfirmJob}
+                          disabled={saving}
+                          className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                        >
+                          ✓ Confirm Job
+                        </button>
+                      )}
+                      {inv.status === 'approved' && (
+                        <div className="flex-1 text-center py-2 text-sm text-emerald-400 font-semibold">
+                          ✓ Job Confirmed
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Status controls */}
             <div className="px-5 py-4 border-b border-gray-800 space-y-3">
@@ -449,168 +671,6 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                 </div>
               </div>
             )}
-
-            {/* Quote builder — line items */}
-            <div className="px-5 py-4 border-b border-gray-800">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-gray-500">Quote / Line Items</p>
-                {!addingItem && (
-                  <button
-                    onClick={() => setAddingItem(true)}
-                    className="text-xs px-2 py-1 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg transition-colors"
-                  >
-                    + Add Item
-                  </button>
-                )}
-              </div>
-
-              {/* Add item form */}
-              {addingItem && (
-                <div className="mb-3 p-3 bg-gray-800/60 rounded-xl border border-gray-700 space-y-2">
-                  {/* Product search */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search product catalog…"
-                      value={productSearch}
-                      onChange={(e) => handleProductSearchChange(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                    {productSearching && (
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">…</span>
-                    )}
-                    {productResults.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                        {productResults.map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => selectProduct(p)}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-800 text-xs transition-colors"
-                          >
-                            <span className="text-white">{p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name}</span>
-                            <span className="text-gray-500 ml-2">฿{p.sale_price.toLocaleString()}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Type + description */}
-                  <div className="flex gap-2">
-                    <select
-                      value={itemType}
-                      onChange={(e) => setItemType(e.target.value as 'labour' | 'part')}
-                      className="px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
-                    >
-                      <option value="labour">Labour</option>
-                      <option value="part">Part</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Description"
-                      value={itemDesc}
-                      onChange={(e) => setItemDesc(e.target.value)}
-                      className="flex-1 px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Qty + prices */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <p className="text-xs text-gray-600 mb-0.5">Qty</p>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={itemQty}
-                        onChange={(e) => setItemQty(e.target.value)}
-                        className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 mb-0.5">Sale ฿</p>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={itemSalePrice}
-                        onChange={(e) => setItemSalePrice(e.target.value)}
-                        className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 mb-0.5">Cost ฿</p>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={itemCostPrice}
-                        onChange={(e) => setItemCostPrice(e.target.value)}
-                        className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => { setAddingItem(false); setItemDesc(''); setItemSalePrice(''); setItemCostPrice(''); setProductSearch(''); setProductResults([]) }}
-                      className="flex-1 py-1.5 rounded-lg border border-gray-600 text-xs text-gray-400 hover:border-gray-500 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleAddLineItem}
-                      disabled={itemSaving || !itemDesc.trim() || !itemSalePrice}
-                      className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-xs text-white font-medium transition-colors"
-                    >
-                      {itemSaving ? 'Adding…' : 'Add'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Line items list */}
-              {job.line_items.length > 0 ? (
-                <div className="space-y-1.5">
-                  {job.line_items.map((li) => (
-                    <div key={li.id} className="flex items-center justify-between text-xs group">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
-                          li.line_type === 'labour'
-                            ? 'bg-blue-900/40 text-blue-300'
-                            : 'bg-amber-900/40 text-amber-300'
-                        }`}>
-                          {li.line_type === 'labour' ? 'L' : 'P'}
-                        </span>
-                        <span className="text-gray-300 truncate">
-                          {li.description.includes(' / ') ? li.description.split(' / ')[1] : li.description}
-                          {li.quantity !== 1 && ` ×${li.quantity}`}
-                        </span>
-                        {li.is_scope_change && (
-                          <span className="text-orange-400 flex-shrink-0">SC</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                        <span className="text-gray-300 font-mono">฿{(li.sale_price * li.quantity).toLocaleString()}</span>
-                        <button
-                          onClick={() => handleDeleteLineItem(li.id)}
-                          className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                          title="Remove item"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="border-t border-gray-700 pt-1.5 flex justify-between text-sm font-semibold">
-                    <span className="text-gray-400">Total</span>
-                    <span className="text-white font-mono">฿{lineItemsTotal.toLocaleString()}</span>
-                  </div>
-                </div>
-              ) : !addingItem ? (
-                <p className="text-xs text-gray-600 text-center py-3">No items yet — click + Add Item to build the quote</p>
-              ) : null}
-            </div>
 
             {/* Status history */}
             {job.status_history.length > 0 && (

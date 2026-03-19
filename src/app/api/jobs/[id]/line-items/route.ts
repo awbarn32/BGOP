@@ -114,5 +114,18 @@ export async function POST(request: Request, { params }: Params) {
     .single()
 
   if (error) return serverError(error.message)
+
+  // Sync linked invoice total (ignore errors — non-blocking)
+  const { data: allItems } = await supabase
+    .from('job_line_items')
+    .select('sale_price, quantity')
+    .eq('job_id', id)
+  const newTotal = (allItems ?? []).reduce((s, li) => s + li.sale_price * li.quantity, 0)
+  await supabase
+    .from('invoices')
+    .update({ total_amount: newTotal })
+    .eq('job_id', id)
+    .not('status', 'in', '("paid","void")')
+
   return Response.json({ data: created }, { status: 201 })
 }

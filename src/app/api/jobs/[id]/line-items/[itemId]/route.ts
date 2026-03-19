@@ -47,6 +47,19 @@ export async function DELETE(_request: Request, { params }: Params) {
     .eq('id', itemId)
 
   if (error) return serverError(error.message)
+
+  // Sync linked invoice total after deletion (ignore errors — non-blocking)
+  const { data: remaining } = await supabase
+    .from('job_line_items')
+    .select('sale_price, quantity')
+    .eq('job_id', id)
+  const newTotal = (remaining ?? []).reduce((s, li) => s + li.sale_price * li.quantity, 0)
+  await supabase
+    .from('invoices')
+    .update({ total_amount: newTotal })
+    .eq('job_id', id)
+    .not('status', 'in', '("paid","void")')
+
   return new Response(null, { status: 204 })
 }
 

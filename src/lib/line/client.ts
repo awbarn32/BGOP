@@ -6,6 +6,8 @@
  * no-op (log) when NEXT_PUBLIC_DEMO_MODE=true or token is absent.
  */
 
+import { createHmac } from 'crypto'
+
 const LINE_API = 'https://api.line.me/v2/bot/message'
 
 function getToken(): string | null {
@@ -201,7 +203,6 @@ export function buildScopeApprovalFlex(params: {
 export function verifyLineSignature(rawBody: string, signature: string): boolean {
   const secret = process.env.LINE_CHANNEL_SECRET
   if (!secret) return false
-  const { createHmac } = require('crypto') as typeof import('crypto')
   const expected = createHmac('sha256', secret).update(rawBody).digest('base64')
   return expected === signature
 }
