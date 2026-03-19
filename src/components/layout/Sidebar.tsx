@@ -6,7 +6,6 @@ import type { UserRole } from '@/types/domain'
 
 const NAV_ITEMS = [
   { href: '/board', label: 'Job Board', icon: '⬜', roles: ['owner', 'pa'] as UserRole[] },
-  { href: '/jobs', label: 'Jobs', icon: '🔧', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/customers', label: 'Customers', icon: '👤', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/vehicles', label: 'Vehicles', icon: '🏍️', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/invoices', label: 'Invoices', icon: '📄', roles: ['owner', 'pa'] as UserRole[] },
