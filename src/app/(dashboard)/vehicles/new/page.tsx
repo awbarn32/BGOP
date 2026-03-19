@@ -11,7 +11,7 @@ function NewVehicleContent() {
   const searchParams = useSearchParams()
   const customerId = searchParams.get('customer_id') ?? ''
 
-  function onSuccess(vehicle: Vehicle) {
+  function onSuccess(_vehicle: Vehicle) {
     if (customerId) {
       router.push(`/customers/${customerId}`)
     } else {

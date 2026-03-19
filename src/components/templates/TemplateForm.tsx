@@ -68,7 +68,7 @@ export function TemplateForm({ template, onSuccess, onCancel }: TemplateFormProp
   // Product search state
   const [productSearch, setProductSearch] = useState('')
   const [productResults, setProductResults] = useState<Product[]>([])
-  const [searchingProducts, setSearchingProducts] = useState(false)
+  const [_searchingProducts, setSearchingProducts] = useState(false)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)

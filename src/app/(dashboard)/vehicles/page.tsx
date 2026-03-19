@@ -55,7 +55,7 @@ export default function VehiclesPage() {
     return () => clearTimeout(t)
   }, [fetchVehicles, search])
 
-  function onCreateSuccess(vehicle: Vehicle) {
+  function onCreateSuccess(_vehicle: Vehicle) {
     setCreateOpen(false)
     fetchVehicles()
   }

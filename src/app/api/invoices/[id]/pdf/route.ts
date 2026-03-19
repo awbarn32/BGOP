@@ -33,11 +33,12 @@ export async function GET(_request: Request, { params }: Params) {
   if (error || !invoice) return notFoundError('Invoice')
 
   try {
-    const buffer = await renderToBuffer(createElement(InvoicePDF, { invoice: invoice as never }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buffer = await renderToBuffer(createElement(InvoicePDF, { invoice: invoice as any }) as any)
 
     const filename = `invoice_${invoice.invoice_number ?? id.slice(0, 8)}.pdf`
 
-    return new Response(buffer, {
+    return new Response(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,

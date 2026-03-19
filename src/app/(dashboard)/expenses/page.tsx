@@ -233,7 +233,7 @@ export default function ExpensesPage() {
       </div>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Record Expense">
-        <ExpenseForm onSuccess={(exp) => { setCreateOpen(false); fetchExpenses() }} onCancel={() => setCreateOpen(false)} />
+        <ExpenseForm onSuccess={() => { setCreateOpen(false); fetchExpenses() }} onCancel={() => setCreateOpen(false)} />
       </Modal>
       <Modal open={!!editExpense} onClose={() => setEditExpense(null)} title="Edit Expense">
         {editExpense && (

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { StatusBadge, RevenueStreamBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/ui/Toast'
 import { BUCKET_STATUSES } from '@/types/kanban'
-import type { Bucket, JobStatus, RevenueStream, User } from '@/types/domain'
+import type { Bucket, JobStatus, User } from '@/types/domain'
 import type { JobCard } from '@/types/kanban'
 
 // Full job detail shape (from GET /api/jobs/[id])
@@ -76,7 +76,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [saving, setSaving] = useState(false)
 
   // Editable fields
-  const [statusEdit, setStatusEdit] = useState<JobStatus | ''>('')
+  const [_statusEdit, setStatusEdit] = useState<JobStatus | ''>('')
   const [mechanicEdit, setMechanicEdit] = useState<string>('')
   const [notesEdit, setNotesEdit] = useState('')
   const [notesChanged, setNotesChanged] = useState(false)

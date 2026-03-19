@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, createContext, useContext } from 'react'
+import { createContext, useContext } from 'react'
 import type { Language } from '@/types/domain'
 
 // Cached locale data
