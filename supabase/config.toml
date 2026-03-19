@@ -1,0 +1,10 @@
+# Supabase project config
+[project]
+id = "ugmbbcjxvvyadtahetgt"
+
+[functions.service-reminder]
+verify_jwt = false
+[functions.ar-followup]
+verify_jwt = false
+[functions.dormant-segmentation]
+verify_jwt = false

@@ -310,6 +310,14 @@ export default function InvoicesPage() {
                       )}
 
                       <div className="flex gap-2 pt-1">
+                        <a
+                          href={`/api/invoices/${inv.id}/pdf`}
+                          className="px-4 py-2 rounded-xl border border-gray-700 hover:bg-gray-800 text-sm text-gray-400 transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          ↓ PDF
+                        </a>
                         {canPay && (
                           <button
                             onClick={() => setPayingInvoice(inv)}
