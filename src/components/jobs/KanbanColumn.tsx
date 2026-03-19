@@ -47,6 +47,7 @@ export function KanbanColumn({ bucket, jobs, onCardClick, canReorder, onPriority
             key={job.id}
             job={job}
             onClick={onCardClick}
+            position={idx + 1}
             canReorder={canReorder}
             isFirst={idx === 0}
             isLast={idx === jobs.length - 1}

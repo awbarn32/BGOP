@@ -16,6 +16,7 @@ interface JobCardProps {
   job: JobCardType
   onClick: (job: JobCardType) => void
   isDragOverlay?: boolean
+  position?: number
   canReorder?: boolean
   isFirst?: boolean
   isLast?: boolean
@@ -23,7 +24,7 @@ interface JobCardProps {
   onMoveDown?: () => void
 }
 
-export function JobCard({ job, onClick, isDragOverlay = false, canReorder, isFirst, isLast, onMoveUp, onMoveDown }: JobCardProps) {
+export function JobCard({ job, onClick, isDragOverlay = false, position, canReorder, isFirst, isLast, onMoveUp, onMoveDown }: JobCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: job.id,
     data: { job },
@@ -61,14 +62,21 @@ export function JobCard({ job, onClick, isDragOverlay = false, canReorder, isFir
     >
       {/* Customer + vehicle */}
       <div className="flex items-start justify-between gap-1 mb-2">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate leading-tight">
-            {job.customer.full_name}
-          </p>
-          <p className="text-xs text-gray-400 truncate">{vehicleLabel}</p>
-          {job.vehicle.license_plate && (
-            <p className="text-xs font-mono text-gray-500">{job.vehicle.license_plate}</p>
+        <div className="min-w-0 flex items-start gap-1.5">
+          {position != null && !isDragOverlay && (
+            <span className="flex-shrink-0 text-xs font-bold text-gray-500 leading-tight mt-0.5">
+              #{position}
+            </span>
           )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white truncate leading-tight">
+              {job.customer.full_name}
+            </p>
+            <p className="text-xs text-gray-400 truncate">{vehicleLabel}</p>
+            {job.vehicle.license_plate && (
+              <p className="text-xs font-mono text-gray-500">{job.vehicle.license_plate}</p>
+            )}
+          </div>
         </div>
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
           {job.logistics_type && (
