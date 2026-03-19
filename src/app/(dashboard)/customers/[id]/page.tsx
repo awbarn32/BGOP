@@ -143,27 +143,32 @@ export default function CustomerProfilePage() {
           ) : (
             <div className="space-y-2">
               {customer.vehicles.map((v) => (
-                <div key={v.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-white">
-                      {v.year} {MAKE_LABELS[v.make] ?? v.make} {v.model}
-                    </span>
-                    <div className="text-xs text-gray-400 mt-0.5 space-x-3">
-                      {v.license_plate && <span>{v.license_plate}</span>}
-                      {v.color && <span>{v.color}</span>}
-                      {v.current_mileage && <span>{v.current_mileage.toLocaleString()} km</span>}
+                <Link key={v.id} href={`/vehicles/${v.id}`} className="block group">
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 flex items-center justify-between group-hover:border-indigo-500/50 group-hover:bg-gray-800/80 transition-colors">
+                    <div>
+                      <span className="font-medium text-white group-hover:text-indigo-300 transition-colors">
+                        {v.year} {MAKE_LABELS[v.make] ?? v.make} {v.model}
+                      </span>
+                      <div className="text-xs text-gray-400 mt-0.5 space-x-3">
+                        {v.license_plate && <span>{v.license_plate}</span>}
+                        {v.color && <span>{v.color}</span>}
+                        {v.current_mileage && <span>{v.current_mileage.toLocaleString()} km</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        v.ownership_status === 'customer_owned'
+                          ? 'bg-gray-700 text-gray-400'
+                          : v.ownership_status === 'for_sale'
+                          ? 'bg-amber-900/50 text-amber-300'
+                          : 'bg-blue-900/50 text-blue-300'
+                      }`}>
+                        {v.ownership_status.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-gray-600 group-hover:text-gray-400 transition-colors text-xs">→</span>
                     </div>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    v.ownership_status === 'customer_owned'
-                      ? 'bg-gray-700 text-gray-400'
-                      : v.ownership_status === 'for_sale'
-                      ? 'bg-amber-900/50 text-amber-300'
-                      : 'bg-blue-900/50 text-blue-300'
-                  }`}>
-                    {v.ownership_status.replace(/_/g, ' ')}
-                  </span>
-                </div>
+                </Link>
               ))}
             </div>
           )}

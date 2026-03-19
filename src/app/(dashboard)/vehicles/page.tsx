@@ -121,9 +121,9 @@ export default function VehiclesPage() {
               {vehicles.map((v) => (
                 <tr key={v.id} className="group hover:bg-gray-800/50 transition-colors">
                   <td className="py-3 pr-4">
-                    <div className="text-white font-medium">
+                    <Link href={`/vehicles/${v.id}`} className="text-white font-medium hover:text-indigo-300 transition-colors">
                       {v.year} {MAKE_LABELS[v.make] ?? v.make} {v.model}
-                    </div>
+                    </Link>
                     {v.color && <div className="text-xs text-gray-500">{v.color}</div>}
                   </td>
                   <td className="py-3 pr-4">

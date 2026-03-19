@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge, RevenueStreamBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/ui/Toast'
@@ -197,12 +198,14 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
             <div className="px-5 pt-5 pb-4 border-b border-gray-800">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-semibold text-white">{job.customer.full_name}</p>
-                  <p className="text-sm text-gray-400">
+                  <Link href={`/customers/${job.customer.id}`} className="text-lg font-semibold text-white hover:text-indigo-300 transition-colors">
+                    {job.customer.full_name}
+                  </Link>
+                  <Link href={`/vehicles/${job.vehicle.id}`} className="block text-sm text-gray-400 hover:text-indigo-300 transition-colors mt-0.5">
                     {job.vehicle.year} {MAKE_LABELS[job.vehicle.make] ?? job.vehicle.make} {job.vehicle.model}
                     {job.vehicle.license_plate && ` · ${job.vehicle.license_plate}`}
                     {job.vehicle.color && ` · ${job.vehicle.color}`}
-                  </p>
+                  </Link>
                   <div className="flex gap-2 mt-1 text-xs text-gray-500">
                     {job.customer.phone && <span>{job.customer.phone}</span>}
                     {job.customer.line_id && <span>LINE: {job.customer.line_id}</span>}
