@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/Header'
 
-export const metadata = undefined // client component — set via Head if needed
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Invoice {
   id: string
