@@ -113,6 +113,59 @@ export const CreateExpenseSchema = z.object({
 export const UpdateExpenseSchema = CreateExpenseSchema.partial()
 
 // ============================================================
+// Job
+// ============================================================
+
+export const CreateJobSchema = z.object({
+  customer_id: uuid,
+  vehicle_id: uuid,
+  mechanic_id: uuid.nullable().optional(),
+  template_id: uuid.nullable().optional(),
+  bucket: z.enum(['new_requests', 'intake', 'available_jobs', 'wip', 'outbound']).default('new_requests'),
+  status: z.enum([
+    'new', 'under_review', 'awaiting_customer', 'quote_sent', 'confirmed',
+    'awaiting_drop_off', 'driver_assigned', 'picked_up', 'in_transit', 'received_at_shop',
+    'awaiting_assignment', 'awaiting_parts', 'awaiting_approval',
+    'work_started', 'paused_parts', 'paused_approval', 'work_completed',
+    'awaiting_pickup', 'driver_assigned_delivery', 'out_for_delivery', 'returned_to_customer',
+    'withdrawn', 'rejected', 'archived',
+  ]).default('new'),
+  priority: z.number().int().default(0),
+  logistics_type: z.enum(['drop_off', 'pickup']).nullable().optional(),
+  revenue_stream: z.enum([
+    'service', 'transport', 'dlt', 'sourcing', 'commission', 'ecu', 'track_day', 'bike_hotel'
+  ]).nullable().optional(),
+  description: z.string().min(1).max(5000),
+  intake_mileage: z.number().int().nonnegative().nullable().optional(),
+  owner_notify_threshold_thb: z.number().int().nonnegative().default(2000),
+})
+
+export const UpdateJobSchema = z.object({
+  bucket: z.enum(['new_requests', 'intake', 'available_jobs', 'wip', 'outbound']).optional(),
+  status: z.enum([
+    'new', 'under_review', 'awaiting_customer', 'quote_sent', 'confirmed',
+    'awaiting_drop_off', 'driver_assigned', 'picked_up', 'in_transit', 'received_at_shop',
+    'awaiting_assignment', 'awaiting_parts', 'awaiting_approval',
+    'work_started', 'paused_parts', 'paused_approval', 'work_completed',
+    'awaiting_pickup', 'driver_assigned_delivery', 'out_for_delivery', 'returned_to_customer',
+    'withdrawn', 'rejected', 'archived',
+  ]).optional(),
+  mechanic_id: uuid.nullable().optional(),
+  priority: z.number().int().optional(),
+  logistics_type: z.enum(['drop_off', 'pickup']).nullable().optional(),
+  revenue_stream: z.enum([
+    'service', 'transport', 'dlt', 'sourcing', 'commission', 'ecu', 'track_day', 'bike_hotel'
+  ]).nullable().optional(),
+  description: z.string().min(1).max(5000).optional(),
+  mechanic_notes: z.string().max(5000).nullable().optional(),
+  intake_mileage: z.number().int().nonnegative().nullable().optional(),
+  completion_mileage: z.number().int().nonnegative().nullable().optional(),
+  owner_notify_threshold_thb: z.number().int().nonnegative().optional(),
+  completed_at: z.string().datetime().nullable().optional(),
+  archived_at: z.string().datetime().nullable().optional(),
+})
+
+// ============================================================
 // API error response helper
 // ============================================================
 
