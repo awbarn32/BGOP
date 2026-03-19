@@ -64,7 +64,7 @@ export function JobCard({ job, onClick, isDragOverlay = false, position, canReor
       <div className="flex items-start justify-between gap-1 mb-2">
         <div className="min-w-0 flex items-start gap-1.5">
           {position != null && !isDragOverlay && (
-            <span className="flex-shrink-0 text-xs font-bold text-gray-500 leading-tight mt-0.5">
+            <span className="flex-shrink-0 min-w-[1.4rem] text-center text-xs font-bold bg-gray-700 text-white rounded px-1 py-0.5 leading-none mt-0.5">
               #{position}
             </span>
           )}
