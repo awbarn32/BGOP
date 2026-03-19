@@ -10,9 +10,11 @@ interface KanbanColumnProps {
   bucket: Bucket
   jobs: JobCardType[]
   onCardClick: (job: JobCardType) => void
+  canReorder?: boolean
+  onPriorityChange?: (jobId: string, direction: 'up' | 'down') => void
 }
 
-export function KanbanColumn({ bucket, jobs, onCardClick }: KanbanColumnProps) {
+export function KanbanColumn({ bucket, jobs, onCardClick, canReorder, onPriorityChange }: KanbanColumnProps) {
   const { isOver, setNodeRef } = useDroppable({ id: bucket })
   const config = BUCKET_CONFIG[bucket]
 
@@ -40,8 +42,17 @@ export function KanbanColumn({ bucket, jobs, onCardClick }: KanbanColumnProps) {
           ${isOver ? 'bg-gray-700/60 border-gray-500' : 'bg-gray-800/30'}
         `}
       >
-        {jobs.map((job) => (
-          <JobCard key={job.id} job={job} onClick={onCardClick} />
+        {jobs.map((job, idx) => (
+          <JobCard
+            key={job.id}
+            job={job}
+            onClick={onCardClick}
+            canReorder={canReorder}
+            isFirst={idx === 0}
+            isLast={idx === jobs.length - 1}
+            onMoveUp={() => onPriorityChange?.(job.id, 'up')}
+            onMoveDown={() => onPriorityChange?.(job.id, 'down')}
+          />
         ))}
 
         {jobs.length === 0 && !isOver && (

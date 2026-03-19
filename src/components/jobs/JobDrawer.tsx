@@ -219,7 +219,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                         ? 'bg-amber-900/50 text-amber-300'
                         : 'bg-blue-900/50 text-blue-300'
                     }`}>
-                      {job.logistics_type === 'pickup' ? 'Pickup' : 'Drop-off'}
+                      {job.logistics_type === 'pickup' ? 'Pickup (we collect)' : 'Drop-off (customer delivers)'}
                     </span>
                   )}
                 </div>

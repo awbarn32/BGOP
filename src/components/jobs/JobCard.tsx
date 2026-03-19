@@ -16,9 +16,14 @@ interface JobCardProps {
   job: JobCardType
   onClick: (job: JobCardType) => void
   isDragOverlay?: boolean
+  canReorder?: boolean
+  isFirst?: boolean
+  isLast?: boolean
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
-export function JobCard({ job, onClick, isDragOverlay = false }: JobCardProps) {
+export function JobCard({ job, onClick, isDragOverlay = false, canReorder, isFirst, isLast, onMoveUp, onMoveDown }: JobCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: job.id,
     data: { job },
@@ -67,7 +72,9 @@ export function JobCard({ job, onClick, isDragOverlay = false }: JobCardProps) {
         </div>
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
           {job.logistics_type && (
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+            <span
+              title={job.logistics_type === 'pickup' ? 'Pickup (we collect)' : 'Drop-off (customer delivers)'}
+              className={`text-xs px-1.5 py-0.5 rounded font-medium ${
               job.logistics_type === 'pickup'
                 ? 'bg-amber-900/50 text-amber-300'
                 : 'bg-blue-900/50 text-blue-300'
@@ -101,6 +108,28 @@ export function JobCard({ job, onClick, isDragOverlay = false }: JobCardProps) {
         <p className="text-xs text-gray-500 mt-1.5 truncate">
           {job.mechanic.full_name}
         </p>
+      )}
+
+      {/* Priority reorder buttons — owner/PA only */}
+      {canReorder && !isDragOverlay && (
+        <div className="flex gap-1 mt-2 pt-2 border-t border-gray-700/50">
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
+            disabled={isFirst}
+            className="flex-1 text-xs py-0.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+            title="Move up (higher priority)"
+          >
+            ↑
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
+            disabled={isLast}
+            className="flex-1 text-xs py-0.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+            title="Move down (lower priority)"
+          >
+            ↓
+          </button>
+        </div>
       )}
     </div>
   )

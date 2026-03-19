@@ -10,9 +10,7 @@ import { BUCKET_DEFAULT_STATUS } from '@/types/kanban'
 
 const REVENUE_STREAMS: { value: RevenueStream; label: string }[] = [
   { value: 'service', label: 'Service' },
-  { value: 'ecu', label: 'ECU' },
   { value: 'sourcing', label: 'Sourcing' },
-  { value: 'commission', label: 'Commission' },
   { value: 'track_day', label: 'Track Day' },
   { value: 'transport', label: 'Transport' },
   { value: 'dlt', label: 'DLT' },
@@ -308,8 +306,8 @@ export function NewJobForm({ defaultBucket = 'new_requests', onSuccess, onCancel
             onChange={(e) => setField('logistics_type', e.target.value as LogisticsType | '')}
           >
             <option value="">— None / Walk-in —</option>
-            <option value="drop_off">Drop-off (we collect)</option>
-            <option value="pickup">Pickup (customer delivers)</option>
+            <option value="drop_off">Drop-off (customer delivers)</option>
+            <option value="pickup">Pickup (we collect)</option>
           </select>
         </FormField>
       </div>

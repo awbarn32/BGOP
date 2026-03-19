@@ -20,6 +20,7 @@ import { JobDrawer } from '@/components/jobs/JobDrawer'
 import { NewJobForm } from '@/components/jobs/NewJobForm'
 import { useToast } from '@/components/ui/Toast'
 import { subscribeToKanbanUpdates, unsubscribe } from '@/lib/supabase/realtime'
+import { createClient } from '@/lib/supabase/client'
 import { BUCKET_ORDER, BUCKET_DEFAULT_STATUS } from '@/types/kanban'
 import type { Bucket, User } from '@/types/domain'
 import type { JobCard as JobCardType } from '@/types/kanban'
@@ -33,6 +34,7 @@ export default function BoardPage() {
   const [activeJob, setActiveJob] = useState<JobCardType | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string>('')
 
   const channelRef = useRef<ReturnType<typeof subscribeToKanbanUpdates> | null>(null)
 
@@ -54,6 +56,11 @@ export default function BoardPage() {
   }, [toast])
 
   useEffect(() => {
+    // Get current user's role for priority controls
+    createClient().auth.getUser().then(({ data }) => {
+      setUserRole(data.user?.app_metadata?.role ?? '')
+    })
+
     fetchJobs()
 
     // Load mechanics for JobDrawer assignment dropdown
@@ -150,9 +157,38 @@ export default function BoardPage() {
     setJobs((prev) => [job, ...prev])
   }
 
+  async function handlePriorityChange(jobId: string, direction: 'up' | 'down') {
+    const job = jobs.find((j) => j.id === jobId)
+    if (!job) return
+    const bucketJobs = jobs
+      .filter((j) => j.bucket === job.bucket)
+      .sort((a, b) => b.priority - a.priority)
+    const idx = bucketJobs.findIndex((j) => j.id === jobId)
+    let newPriority: number
+    if (direction === 'up') {
+      if (idx === 0) return
+      newPriority = bucketJobs[idx - 1].priority + 1
+    } else {
+      if (idx === bucketJobs.length - 1) return
+      newPriority = bucketJobs[idx + 1].priority - 1
+    }
+    // Optimistic update
+    setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, priority: newPriority } : j))
+    // Persist
+    await fetch(`/api/jobs/${jobId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priority: newPriority }),
+    })
+  }
+
+  const canReorder = userRole === 'owner' || userRole === 'pa'
+
   const jobsByBucket = BUCKET_ORDER.reduce<Record<Bucket, JobCardType[]>>(
     (acc, bucket) => {
-      acc[bucket] = jobs.filter((j) => j.bucket === bucket)
+      acc[bucket] = jobs
+        .filter((j) => j.bucket === bucket)
+        .sort((a, b) => b.priority - a.priority) // highest priority at top
       return acc
     },
     {} as Record<Bucket, JobCardType[]>
@@ -194,6 +230,8 @@ export default function BoardPage() {
                     bucket={bucket}
                     jobs={jobsByBucket[bucket]}
                     onCardClick={(job) => setSelectedJobId(job.id)}
+                    canReorder={canReorder}
+                    onPriorityChange={handlePriorityChange}
                   />
                 </div>
               ))}
