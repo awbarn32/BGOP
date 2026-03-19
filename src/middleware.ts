@@ -38,11 +38,27 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/') ||
     pathname.includes('.')
   ) {
-    const { supabaseResponse } = await updateSession(request)
-    return supabaseResponse
+    try {
+      const { supabaseResponse } = await updateSession(request)
+      return supabaseResponse
+    } catch {
+      return NextResponse.next()
+    }
   }
 
-  const { supabaseResponse, user } = await updateSession(request)
+  let supabaseResponse: NextResponse
+  let user: { app_metadata?: Record<string, unknown> } | null = null
+
+  try {
+    const result = await updateSession(request)
+    supabaseResponse = result.supabaseResponse
+    user = result.user
+  } catch {
+    // Supabase unreachable — fail safe to login redirect
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
 
   // Not authenticated — redirect to login
   if (!user) {
@@ -63,7 +79,6 @@ export async function middleware(request: NextRequest) {
   const routeConfig = ROUTE_ROLES.find((r) => pathname.startsWith(r.prefix))
 
   if (routeConfig && !routeConfig.roles.includes(role)) {
-    // Redirect to the user's own landing page
     const landing = ROLE_LANDING[role] ?? '/board'
     return NextResponse.redirect(new URL(landing, request.url))
   }
