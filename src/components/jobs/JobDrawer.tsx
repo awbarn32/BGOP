@@ -116,6 +116,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [msgLang, setMsgLang] = useState<'en' | 'th'>('en')
   const [msgRecipientLang, setMsgRecipientLang] = useState<'en' | 'th'>('th')
   const [sendingMsg, setSendingMsg] = useState(false)
+  const [sendingQuoteLink, setSendingQuoteLink] = useState(false)
   const [msgResult, setMsgResult] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Deposit recording state
@@ -313,6 +314,48 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     if (!job) return
     if (!confirm('Mark quote as sent and update job status to Quote Sent?')) return
     await patch({ status: 'quote_sent' as JobStatus })
+  }
+
+  async function handleSendQuoteLink() {
+    if (!job || !job.customer.line_id) return
+    
+    setSendingQuoteLink(true)
+    setMsgResult(null)
+    
+    try {
+      // 1. Generate the link
+      const quoteUrl = `${window.location.origin}/quote/${job.id}`
+      
+      // 2. Build the message
+      const isThai = msgRecipientLang === 'th'
+      const text = isThai
+        ? `สวัสดีครับคุณ ${job.customer.full_name}, บัตเลอร์ การาจ ได้เตรียมใบประเมินราคาสำหรับท่านเรียบร้อยแล้ว ท่านสามารถตรวจสอบรายละเอียดและยืนยันผ่านทางลิงก์นี้ได้เลยครับ:\n\n${quoteUrl}`
+        : `Hi ${job.customer.full_name}, Butler Garage has prepared your service estimate. You can review the details and authorize the services via this link:\n\n${quoteUrl}`
+
+      // 3. Send via LINE
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: job.customer.id,
+          text: text,
+          recipient_language: msgRecipientLang,
+        }),
+      })
+      
+      const json = await res.json()
+      if (!res.ok) {
+        setMsgResult({ ok: false, text: json.error?.message ?? 'Failed to send link' })
+      } else {
+        // 4. Update job status to quote_sent
+        await patch({ status: 'quote_sent' as JobStatus })
+        setMsgResult({ ok: true, text: 'Digital Quote link sent via LINE ✓' })
+      }
+    } catch {
+      setMsgResult({ ok: false, text: 'Network error' })
+    } finally {
+      setSendingQuoteLink(false)
+    }
   }
 
   async function handleConfirmJob() {
@@ -954,14 +997,27 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                   {msgResult.text}
                 </p>
               )}
-              <Button
-                size="sm"
-                disabled={!msgText.trim() || sendingMsg}
-                loading={sendingMsg}
-                onClick={handleSendMessage}
-              >
-                {sendingMsg ? 'Translating & Sending…' : 'Send via LINE'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={!msgText.trim() || sendingMsg || sendingQuoteLink}
+                  loading={sendingMsg}
+                  onClick={handleSendMessage}
+                >
+                  {sendingMsg ? 'Translating & Sending…' : 'Send via LINE'}
+                </Button>
+                {job.customer.line_id && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={sendingMsg || sendingQuoteLink}
+                    loading={sendingQuoteLink}
+                    onClick={handleSendQuoteLink}
+                  >
+                    {sendingQuoteLink ? 'Sending Link…' : '📄 Send Quote Link'}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Actions */}
