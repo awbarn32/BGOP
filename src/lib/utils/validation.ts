@@ -140,6 +140,29 @@ export const CreateJobSchema = z.object({
   owner_notify_threshold_thb: z.number().int().nonnegative().default(2000),
 })
 
+// ============================================================
+// Public Intake
+// ============================================================
+
+export const CustomerIntakeSchema = z.object({
+  preferred_language: z.enum(['th', 'en']),
+  contact: z.object({
+    full_name: z.string().min(1).max(255),
+    phone: z.string().min(8).max(20),
+    line_id: z.string().max(100).optional(),
+    email: z.string().email().optional().or(z.literal('')),
+  }),
+  vehicle: z.object({
+    make: z.string().min(1).max(100),
+    model: z.string().min(1).max(100),
+    year: z.number().int().min(1970).max(new Date().getFullYear() + 1),
+    license_plate: z.string().max(20).optional(),
+  }),
+  service: z.string().min(1).max(5000),
+  logistics: z.enum(['drop_off', 'pickup']),
+})
+
+
 export const UpdateJobSchema = z.object({
   bucket: z.enum(['new_requests', 'intake', 'available_jobs', 'wip', 'outbound']).optional(),
   status: z.enum([

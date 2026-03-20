@@ -133,6 +133,17 @@ export async function POST(request: Request) {
     }).eq('id', job.id)
   }
 
+  // 5. Create an initial draft quote invoice for the job
+  await supabase.from('invoices').insert({
+    job_id: job.id,
+    customer_id: customer.id,
+    vehicle_id: vehicle.id,
+    revenue_stream: revenueStream,
+    status: 'quote',
+    total_amount: 0,
+    invoice_date: new Date().toISOString().split('T')[0],
+  })
+
   return Response.json(
     { data: { job_id: job.id, customer_id: customer.id } },
     { status: 201 }
