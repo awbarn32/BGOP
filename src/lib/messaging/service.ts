@@ -11,6 +11,7 @@
 
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { pushMessage, isDemoMode } from '@/lib/line/client'
 import type { LineMessage } from '@/lib/line/client'
 
@@ -69,20 +70,10 @@ export async function buildTranslatedMessage(
   originalLanguage: 'th' | 'en',
   recipientLanguage: 'th' | 'en'
 ): Promise<string> {
-  let finalContent = originalText
-
-  if (originalLanguage !== recipientLanguage) {
-    finalContent = await translateText(originalText, recipientLanguage)
+  if (originalLanguage === recipientLanguage) {
+    return originalText
   }
-
-  return [
-    '🔧 Butler Garage',
-    '',
-    finalContent,
-    '',
-    '—',
-    'Butler Garage | Bangkok',
-  ].join('\n')
+  return await translateText(originalText, recipientLanguage)
 }
 
 // ── Core send function ────────────────────────────────────────────────────────
@@ -104,7 +95,7 @@ interface SendResult {
 }
 
 export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // ── 1. Fetch customer consent + LINE ID ────────────────────────────────────
   const { data: customer } = await supabase
