@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendLineMessage } from '@/lib/messaging/service'
-import { validationError, notFoundError, serverError } from '@/lib/utils/validation'
+import { notFoundError, serverError } from '@/lib/utils/validation'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -43,7 +43,10 @@ export async function POST(_request: Request, { params }: Params) {
   }
 
   // 4. Send a "Thank You" message via LINE if they have a line_id
-  const customer = job.customer as any
+  const customer = Array.isArray(job.customer) 
+    ? job.customer[0] 
+    : (job.customer as unknown as { id: string; line_id: string | null; preferred_language: 'th' | 'en' | null })
+
   if (customer?.line_id) {
     const isThai = customer.preferred_language === 'th'
     const thankYouMsg = isThai 
@@ -58,7 +61,7 @@ export async function POST(_request: Request, { params }: Params) {
         messages: [{ type: 'text', text: thankYouMsg }],
         skipChecks: true
       })
-    } catch (lineErr) {
+    } catch (lineErr: unknown) {
       console.error('Failed to send thank you LINE message:', lineErr)
       // We don't fail the whole request if the LINE notification fails
     }

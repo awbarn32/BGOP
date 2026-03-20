@@ -4,7 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 
-export function QuoteClient({ job }: { job: any }) {
+interface QuoteJob {
+  id: string
+  status: string
+  customer: {
+    id: string
+    full_name: string
+  }
+}
+
+export function QuoteClient({ job }: { job: QuoteJob }) {
   const router = useRouter()
   const [authorizing, setAuthorizing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,11 +37,11 @@ export function QuoteClient({ job }: { job: any }) {
       })
       const json = await res.json()
       if (!res.ok) {
-        throw new Error(json.error?.message || 'Failed to authorize quote')
+        throw new Error((json.error as { message?: string })?.message || 'Failed to authorize quote')
       }
       router.refresh()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
     } finally {
       setAuthorizing(false)
     }

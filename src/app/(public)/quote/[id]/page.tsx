@@ -18,24 +18,60 @@ const DETAIL_SELECT = `
   invoice:invoices(id, invoice_number, status, total_amount, deposit_amount)
 `
 
+interface QuoteJob {
+  id: string
+  status: string
+  description: string
+  customer: {
+    id: string
+    full_name: string
+    phone: string | null
+    preferred_language: 'th' | 'en'
+  }
+  vehicle: {
+    id: string
+    make: string
+    model: string
+    year: number
+    license_plate: string | null
+  }
+  line_items: Array<{
+    id: string
+    line_type: 'labour' | 'part'
+    description: string
+    quantity: number
+    sale_price: number
+    is_scope_change: boolean
+  }>
+  invoice: Array<{
+    id: string
+    invoice_number: string
+    status: string
+    total_amount: number
+    deposit_amount: number
+  }>
+}
+
 export default async function QuotePage({ params }: Params) {
   const { id } = await params
 
   // We use the admin client because this is a public page accessed via secure link
   const supabase = createAdminClient()
 
-  const { data: job, error } = await supabase
+  const { data, error } = await supabase
     .from('jobs')
     .select(DETAIL_SELECT)
     .eq('id', id)
     .single()
 
-  if (error || !job) {
+  if (error || !data) {
     return notFound()
   }
 
+  const job = data as unknown as QuoteJob
+
   // Calculate totals
-  const subtotal = (job as any).line_items?.reduce((sum: number, item: any) => sum + (item.quantity * item.sale_price), 0) ?? 0
+  const subtotal = job.line_items?.reduce((sum, item) => sum + (item.quantity * item.sale_price), 0) ?? 0
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200 py-12 px-4 sm:px-6">
@@ -56,16 +92,16 @@ export default async function QuotePage({ params }: Params) {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">Customer</p>
-              <p className="text-base text-gray-200 font-medium">{(job as any).customer?.full_name}</p>
-              {(job as any).customer?.phone && <p className="text-sm text-gray-400 mt-0.5">{(job as any).customer.phone}</p>}
+              <p className="text-base text-gray-200 font-medium">{job.customer?.full_name}</p>
+              {job.customer?.phone && <p className="text-sm text-gray-400 mt-0.5">{job.customer.phone}</p>}
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">Vehicle</p>
               <p className="text-base text-gray-200 font-medium">
-                {(job as any).vehicle?.year} {(job as any).vehicle?.make} {(job as any).vehicle?.model}
+                {job.vehicle?.year} {job.vehicle?.make} {job.vehicle?.model}
               </p>
-              {(job as any).vehicle?.license_plate && (
-                <p className="text-sm text-gray-400 mt-0.5">{(job as any).vehicle.license_plate}</p>
+              {job.vehicle?.license_plate && (
+                <p className="text-sm text-gray-400 mt-0.5">{job.vehicle.license_plate}</p>
               )}
             </div>
           </div>
@@ -77,12 +113,12 @@ export default async function QuotePage({ params }: Params) {
             <h2 className="text-lg font-semibold text-white">Proposed Services</h2>
           </div>
           <div className="divide-y divide-gray-800/60">
-            {(job as any).line_items?.length === 0 ? (
+            {job.line_items?.length === 0 ? (
               <div className="px-6 py-8 text-center text-gray-500">
                 No services specified yet.
               </div>
             ) : (
-              (job as any).line_items?.map((item: any) => (
+              job.line_items?.map((item) => (
                 <div key={item.id} className="px-6 py-4 flex items-start justify-between group hover:bg-gray-800/20 transition-colors">
                   <div className="flex-1 pr-4">
                     <div className="flex items-center gap-2 mb-1">
@@ -122,7 +158,7 @@ export default async function QuotePage({ params }: Params) {
         </div>
 
         {/* Interactive Client Component for Authorization */}
-        <QuoteClient job={job as any} />
+        <QuoteClient job={job} />
         
       </div>
     </div>
