@@ -258,7 +258,7 @@ export default function MessagesPage() {
                           </p>
                         </div>
                         <p className="text-xs text-gray-500 truncate mt-0.5 pl-3.5">
-                          {lastMsg.content.slice(0, 55)}
+                          {(lastMsg.content ?? '').slice(0, 55)}
                         </p>
                       </div>
                       <div className="flex-shrink-0 text-right">
@@ -334,7 +334,7 @@ export default function MessagesPage() {
                         {msg.message_type === 'automated' && (
                           <p className="text-xs text-indigo-300 mb-1">Automated</p>
                         )}
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <p className="text-sm whitespace-pre-wrap">{msg.content ?? ''}</p>
                         <div className="flex items-center justify-between gap-3 mt-1.5">
                           <p className="text-xs opacity-50">{fmtTime(msg.sent_at)}</p>
                           <div className="flex items-center gap-2">
