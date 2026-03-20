@@ -637,7 +637,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                           <p className="text-xs text-gray-400 mb-1">Method</p>
                           <select
                             value={depositMethod}
-                            onChange={(e) => setDepositMethod(e.target.value as any)}
+                            onChange={(e) => setDepositMethod(e.target.value as typeof depositMethod)}
                             className="w-full px-3 py-2 bg-gray-900 border border-teal-900 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
                           >
                             <option value="bank_transfer">Bank Transfer</option>
