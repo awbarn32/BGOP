@@ -127,6 +127,16 @@ export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
     return { ok: true, skipped: 'no_line_id' }
   }
 
+  // Verify that the LINE ID is a valid Webhook-generated ID (starts with U, R, or C and is 33 chars long)
+  // If a PA manually types a display name like "@joesmith", the LINE API will reject it.
+  const validPrefixes = ['U', 'R', 'C']
+  const isValidLineId = customer.line_id.length === 33 && validPrefixes.includes(customer.line_id[0])
+  
+  if (!isValidLineId) {
+    console.log(`[messaging] customer ${opts.customerId} has invalid LINE ID format: ${customer.line_id}`)
+    return { ok: false, error: 'Invalid LINE ID. The customer must send a message to the Garage LINE Bot first to link their account!' }
+  }
+
   if (!opts.skipChecks && !customer.consent_to_message) {
     console.log(`[messaging] customer ${opts.customerId} has not consented — skipping`)
     return { ok: true, skipped: 'no_consent' }
