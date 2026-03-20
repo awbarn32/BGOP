@@ -54,40 +54,31 @@ export async function translateText(
 }
 
 /**
- * Build a bilingual message from a single-language input.
- * PA types in any language → both Thai and English versions generated.
+ * Build a translated message targeting a single language.
  *
- * Returns a formatted bilingual string:
+ * Returns a formatted string:
  *   🔧 Butler Garage
  *
- *   [Thai]
- *
- *   [English]
+ *   [Translated Text]
  *
  *   —
  *   Butler Garage | Bangkok
  */
-export async function buildBilingualMessage(
+export async function buildTranslatedMessage(
   originalText: string,
-  originalLanguage: 'th' | 'en'
+  originalLanguage: 'th' | 'en',
+  recipientLanguage: 'th' | 'en'
 ): Promise<string> {
-  let thai: string
-  let english: string
+  let finalContent = originalText
 
-  if (originalLanguage === 'th') {
-    thai = originalText
-    english = await translateText(originalText, 'en')
-  } else {
-    english = originalText
-    thai = await translateText(originalText, 'th')
+  if (originalLanguage !== recipientLanguage) {
+    finalContent = await translateText(originalText, recipientLanguage)
   }
 
   return [
     '🔧 Butler Garage',
     '',
-    thai,
-    '',
-    english,
+    finalContent,
     '',
     '—',
     'Butler Garage | Bangkok',
@@ -187,18 +178,20 @@ interface DirectMessageOptions {
   customerId: string
   jobId?: string
   text: string
-  /** Language the PA typed in — will be auto-translated to the other language */
+  /** Language the PA typed in */
   senderLanguage: 'th' | 'en'
+  /** Language the customer will receive the message in */
+  recipientLanguage: 'th' | 'en'
 }
 
 export async function sendDirectMessage(opts: DirectMessageOptions): Promise<SendResult> {
-  const bilingual = await buildBilingualMessage(opts.text, opts.senderLanguage)
+  const translated = await buildTranslatedMessage(opts.text, opts.senderLanguage, opts.recipientLanguage)
 
   return sendLineMessage({
     customerId: opts.customerId,
     jobId: opts.jobId,
     messageType: 'direct_message',
-    messages: [{ type: 'text', text: bilingual }],
+    messages: [{ type: 'text', text: translated }],
     skipChecks: false,
   })
 }

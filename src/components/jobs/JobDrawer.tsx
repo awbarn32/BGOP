@@ -114,6 +114,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   // LINE messaging panel
   const [msgText, setMsgText] = useState('')
   const [msgLang, setMsgLang] = useState<'en' | 'th'>('en')
+  const [msgRecipientLang, setMsgRecipientLang] = useState<'en' | 'th'>('th')
   const [sendingMsg, setSendingMsg] = useState(false)
   const [msgResult, setMsgResult] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -193,7 +194,11 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
       const res = await fetch(`/api/jobs/${job.id}/send-message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: msgText.trim(), sender_language: msgLang }),
+        body: JSON.stringify({
+          text: msgText.trim(),
+          sender_language: msgLang,
+          recipient_language: msgRecipientLang,
+        }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -915,6 +920,25 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                   พิมพ์เป็นภาษาไทย
                 </button>
               </div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-400">Customer receives:</span>
+                <button
+                  onClick={() => setMsgRecipientLang('en')}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                    msgRecipientLang === 'en' ? 'bg-green-700/80 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => setMsgRecipientLang('th')}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                    msgRecipientLang === 'th' ? 'bg-green-700/80 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  ภาษาไทย (Thai)
+                </button>
+              </div>
               <textarea
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y min-h-[72px]"
                 value={msgText}
@@ -923,7 +947,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                 disabled={sendingMsg}
               />
               <p className="text-xs text-gray-600 mt-1 mb-2">
-                Claude AI will translate your message — the customer receives both languages.
+                AI will translate your message to the selected receiving language.
               </p>
               {msgResult && (
                 <p className={`text-xs mb-2 ${msgResult.ok ? 'text-green-400' : 'text-red-400'}`}>

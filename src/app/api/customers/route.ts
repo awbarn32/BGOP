@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   CreateCustomerSchema,
   validationError,
@@ -73,8 +74,9 @@ export async function POST(request: Request) {
 
   // Retroactively link orphaned incoming LINE messages if a valid LINE ID was provided
   if (parsed.data.line_id && parsed.data.line_id.startsWith('U')) {
+    const adminSupabase = createAdminClient()
     const unknownPrefix = `[Unknown LINE user: ${parsed.data.line_id}]%`
-    await supabase
+    await adminSupabase
       .from('message_log')
       .update({ customer_id: data.id })
       .is('customer_id', null)

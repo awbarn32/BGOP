@@ -59,6 +59,7 @@ const SendSchema = z.object({
   customer_id: z.string().uuid(),
   text: z.string().min(1).max(2000),
   sender_language: z.enum(['th', 'en']).default('en'),
+  recipient_language: z.enum(['th', 'en']).default('th'),
 })
 
 export async function POST(request: Request) {
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
   const parsed = SendSchema.safeParse(body)
   if (!parsed.success) return validationError('Validation failed', parsed.error.flatten())
 
-  const { customer_id, text, sender_language } = parsed.data
+  const { customer_id, text, sender_language, recipient_language } = parsed.data
 
   // Find most recent active job for this customer
   const { data: job } = await supabase
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
     jobId,
     text,
     senderLanguage: sender_language,
+    recipientLanguage: recipient_language,
   })
 
   if (!result.ok) return serverError(result.error ?? 'Failed to send message')

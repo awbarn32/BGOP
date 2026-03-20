@@ -23,6 +23,7 @@ type Params = { params: Promise<{ id: string }> }
 const SendMessageSchema = z.object({
   text: z.string().min(1).max(2000),
   sender_language: z.enum(['th', 'en']).default('en'),
+  recipient_language: z.enum(['th', 'en']).default('th'),
 })
 
 export async function POST(request: Request, { params }: Params) {
@@ -52,13 +53,14 @@ export async function POST(request: Request, { params }: Params) {
   const parsed = SendMessageSchema.safeParse(body)
   if (!parsed.success) return validationError('Validation failed', parsed.error.flatten())
 
-  const { text, sender_language } = parsed.data
+  const { text, sender_language, recipient_language } = parsed.data
 
   const result = await sendDirectMessage({
     customerId: job.customer_id,
     jobId: id,
     text,
     senderLanguage: sender_language,
+    recipientLanguage: recipient_language,
   })
 
   if (!result.ok) {

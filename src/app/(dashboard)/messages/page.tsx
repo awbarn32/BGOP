@@ -54,6 +54,7 @@ export default function MessagesPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [replyLang, setReplyLang] = useState<'en' | 'th'>('en')
+  const [recipientLang, setRecipientLang] = useState<'en' | 'th'>('th')
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [search, setSearch] = useState('')
@@ -65,6 +66,7 @@ export default function MessagesPage() {
   const [newCustomerId, setNewCustomerId] = useState('')
   const [newText, setNewText] = useState('')
   const [newLang, setNewLang] = useState<'en' | 'th'>('en')
+  const [newRecipientLang, setNewRecipientLang] = useState<'en' | 'th'>('th')
   const [newSending, setNewSending] = useState(false)
   const [newResult, setNewResult] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -139,6 +141,7 @@ export default function MessagesPage() {
           customer_id: selectedThread.customer.id,
           text: replyText.trim(),
           sender_language: replyLang,
+          recipient_language: recipientLang,
         }),
       })
       const json = await res.json()
@@ -173,6 +176,7 @@ export default function MessagesPage() {
           customer_id: newCustomerId,
           text: newText.trim(),
           sender_language: newLang,
+          recipient_language: newRecipientLang,
         }),
       })
       const json = await res.json()
@@ -382,6 +386,25 @@ export default function MessagesPage() {
                     พิมพ์ภาษาไทย
                   </button>
                 </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-400">Customer receives:</span>
+                  <button
+                    onClick={() => setRecipientLang('en')}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                      recipientLang === 'en' ? 'bg-green-700/80 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    English
+                  </button>
+                  <button
+                    onClick={() => setRecipientLang('th')}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                      recipientLang === 'th' ? 'bg-green-700/80 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    ภาษาไทย (Thai)
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <textarea
                     value={replyText}
@@ -401,7 +424,7 @@ export default function MessagesPage() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-600 mt-1">
-                  AI translates automatically — customer receives both Thai and English
+                  AI automatically translates your message to the selected receiving language
                 </p>
                 {sendResult && (
                   <p className={`text-xs mt-1.5 ${sendResult.ok ? 'text-green-400' : 'text-red-400'}`}>
@@ -474,6 +497,26 @@ export default function MessagesPage() {
                 }`}
               >
                 พิมพ์ภาษาไทย
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-gray-400">Customer receives:</span>
+              <button
+                onClick={() => setNewRecipientLang('en')}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                  newRecipientLang === 'en' ? 'bg-green-700/80 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                English
+              </button>
+              <button
+                onClick={() => setNewRecipientLang('th')}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                  newRecipientLang === 'th' ? 'bg-green-700/80 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                ภาษาไทย (Thai)
               </button>
             </div>
 
