@@ -62,5 +62,16 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (error) return serverError(error.message)
   if (!data) return notFoundError('Customer')
+
+  // Retroactively link orphaned incoming LINE messages if a valid LINE ID was just added
+  if (parsed.data.line_id && parsed.data.line_id.startsWith('U')) {
+    const unknownPrefix = `[Unknown LINE user: ${parsed.data.line_id}]%`
+    await supabase
+      .from('message_log')
+      .update({ customer_id: data.id })
+      .is('customer_id', null)
+      .like('content', unknownPrefix)
+  }
+
   return Response.json({ data })
 }

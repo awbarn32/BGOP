@@ -70,5 +70,16 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return serverError(error.message)
+
+  // Retroactively link orphaned incoming LINE messages if a valid LINE ID was provided
+  if (parsed.data.line_id && parsed.data.line_id.startsWith('U')) {
+    const unknownPrefix = `[Unknown LINE user: ${parsed.data.line_id}]%`
+    await supabase
+      .from('message_log')
+      .update({ customer_id: data.id })
+      .is('customer_id', null)
+      .like('content', unknownPrefix)
+  }
+
   return Response.json({ data }, { status: 201 })
 }
