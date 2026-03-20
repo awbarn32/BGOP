@@ -125,8 +125,30 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [depositMethod, setDepositMethod] = useState<'cash' | 'bank_transfer' | 'promptpay' | 'credit_card' | 'other'>('bank_transfer')
   const [depositSaving, setDepositSaving] = useState(false)
 
+  // Driver work orders state
+  interface WorkOrder {
+    id: string
+    job_id: string
+    driver_id: string | null
+    order_type: 'pickup' | 'delivery'
+    status: string
+    pickup_address: string | null
+    delivery_address: string | null
+    scheduled_date: string | null
+    notes: string | null
+  }
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
+  const [drivers, setDrivers] = useState<{ id: string; full_name: string }[]>([])
+  const [showWorkOrderForm, setShowWorkOrderForm] = useState(false)
+  const [woType, setWoType] = useState<'pickup' | 'delivery'>('pickup')
+  const [woDriverId, setWoDriverId] = useState('')
+  const [woAddress, setWoAddress] = useState('')
+  const [woDate, setWoDate] = useState('')
+  const [woNotes, setWoNotes] = useState('')
+  const [woSaving, setWoSaving] = useState(false)
+
   useEffect(() => {
-    if (!jobId) { setJob(null); return }
+    if (!jobId) { setJob(null); setWorkOrders([]); return }
     setLoading(true)
     fetch(`/api/jobs/${jobId}`)
       .then((r) => r.json())
@@ -136,10 +158,24 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
         setMechanicEdit(j.data?.mechanic_id ?? '')
         setNotesEdit(j.data?.mechanic_notes ?? '')
         setNotesChanged(false)
+        if (j.data?.logistics_type === 'pickup' || j.data?.bucket === 'outbound' || j.data?.bucket === 'intake') {
+          fetch(`/api/driver/orders?job_id=${jobId}&include_completed=true`)
+            .then((r) => r.json())
+            .then((d) => setWorkOrders(d.data ?? []))
+            .catch(() => {/* non-critical */})
+        }
       })
       .catch(() => toast('Failed to load job', 'error'))
       .finally(() => setLoading(false))
   }, [jobId, toast])
+
+  useEffect(() => {
+    // Load drivers for work order assignment
+    fetch('/api/users?role=driver')
+      .then((r) => r.json())
+      .then((d) => setDrivers(d.data ?? []))
+      .catch(() => {/* non-critical */})
+  }, [])
 
   async function patch(payload: Record<string, unknown>) {
     if (!job) return
@@ -224,6 +260,39 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
       status: 'archived' as JobStatus,
     })
     onClose()
+  }
+
+  async function handleCreateWorkOrder() {
+    if (!job) return
+    setWoSaving(true)
+    try {
+      const res = await fetch('/api/driver/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: job.id,
+          order_type: woType,
+          driver_id: woDriverId || null,
+          pickup_address: woType === 'pickup' ? (woAddress || null) : null,
+          delivery_address: woType === 'delivery' ? (woAddress || null) : null,
+          scheduled_date: woDate || null,
+          notes: woNotes || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast(json.error?.message ?? 'Failed to create work order', 'error')
+        return
+      }
+      setWorkOrders((prev) => [...prev, json.data])
+      setShowWorkOrderForm(false)
+      setWoAddress(''); setWoDate(''); setWoNotes(''); setWoDriverId('')
+      toast('Work order created', 'success')
+    } catch {
+      toast('Network error', 'error')
+    } finally {
+      setWoSaving(false)
+    }
   }
 
   function handleProductSearchChange(val: string) {
@@ -843,6 +912,140 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Driver Work Orders — shown for pickup jobs or intake/outbound buckets */}
+            {(job.logistics_type === 'pickup' || job.bucket === 'intake' || job.bucket === 'outbound') && (
+              <div className="px-5 py-4 border-b border-gray-800">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-gray-500">Driver Work Orders</p>
+                  {!showWorkOrderForm && (
+                    <button
+                      onClick={() => {
+                        setWoType(job.bucket === 'outbound' ? 'delivery' : 'pickup')
+                        setShowWorkOrderForm(true)
+                      }}
+                      className="text-xs px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded-lg transition-colors"
+                    >
+                      + New Order
+                    </button>
+                  )}
+                </div>
+
+                {/* Existing work orders */}
+                {workOrders.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {workOrders.map((wo) => {
+                      const WO_STATUS_STYLE: Record<string, string> = {
+                        pending: 'bg-gray-800 text-gray-400',
+                        assigned: 'bg-blue-900/50 text-blue-300',
+                        en_route: 'bg-amber-900/50 text-amber-300',
+                        arrived: 'bg-teal-900/50 text-teal-300',
+                        loaded: 'bg-indigo-900/50 text-indigo-300',
+                        in_transit: 'bg-purple-900/50 text-purple-300',
+                        delivered: 'bg-emerald-900/50 text-emerald-300',
+                        cancelled: 'bg-red-900/30 text-red-400',
+                      }
+                      const WO_STATUS_LABEL: Record<string, string> = {
+                        pending: 'Pending', assigned: 'Assigned', en_route: 'En Route',
+                        arrived: 'Arrived', loaded: 'Loaded', in_transit: 'In Transit',
+                        delivered: 'Delivered', cancelled: 'Cancelled',
+                      }
+                      const driverName = wo.driver_id
+                        ? (drivers.find((d) => d.id === wo.driver_id)?.full_name ?? 'Driver')
+                        : 'Unassigned'
+                      const address = wo.order_type === 'pickup' ? wo.pickup_address : wo.delivery_address
+                      return (
+                        <div key={wo.id} className="rounded-xl p-3 bg-gray-800/50 border border-gray-700 text-xs space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${wo.order_type === 'pickup' ? 'bg-amber-900/50 text-amber-300' : 'bg-teal-900/50 text-teal-300'}`}>
+                              {wo.order_type === 'pickup' ? '🏍️ Pickup' : '🚚 Delivery'}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${WO_STATUS_STYLE[wo.status] ?? 'bg-gray-800 text-gray-400'}`}>
+                              {WO_STATUS_LABEL[wo.status] ?? wo.status}
+                            </span>
+                          </div>
+                          <p className="text-gray-400">{driverName}</p>
+                          {address && <p className="text-gray-500">{address}</p>}
+                          {wo.scheduled_date && (
+                            <p className="text-gray-500">
+                              {new Date(wo.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {workOrders.length === 0 && !showWorkOrderForm && (
+                  <p className="text-xs text-gray-600 italic">No work orders yet.</p>
+                )}
+
+                {/* Create work order form */}
+                {showWorkOrderForm && (
+                  <div className="p-3 bg-gray-800/60 rounded-xl border border-gray-700 space-y-2">
+                    <div className="flex gap-2">
+                      {(['pickup', 'delivery'] as const).map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setWoType(t)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            woType === t ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                          }`}
+                        >
+                          {t === 'pickup' ? '🏍️ Pickup' : '🚚 Delivery'}
+                        </button>
+                      ))}
+                    </div>
+                    <select
+                      value={woDriverId}
+                      onChange={(e) => setWoDriverId(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="">— No driver assigned yet —</option>
+                      {drivers.map((d) => (
+                        <option key={d.id} value={d.id}>{d.full_name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder={woType === 'pickup' ? 'Pickup address' : 'Delivery address'}
+                      value={woAddress}
+                      onChange={(e) => setWoAddress(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="date"
+                      value={woDate}
+                      onChange={(e) => setWoDate(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <textarea
+                      placeholder="Notes (optional)"
+                      value={woNotes}
+                      onChange={(e) => setWoNotes(e.target.value)}
+                      rows={2}
+                      className="w-full px-2 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => { setShowWorkOrderForm(false); setWoAddress(''); setWoDate(''); setWoNotes(''); setWoDriverId('') }}
+                        className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleCreateWorkOrder}
+                        disabled={woSaving}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-700 hover:bg-amber-600 text-white transition-colors disabled:opacity-50"
+                      >
+                        {woSaving ? 'Creating…' : 'Create Order'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

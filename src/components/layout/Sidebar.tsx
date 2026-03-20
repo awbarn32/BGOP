@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/expenses', label: 'Expenses', icon: '💰', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/messages', label: 'Messages', icon: '💬', roles: ['owner', 'pa'] as UserRole[] },
   { href: '/reports', label: 'Reports', icon: '📊', roles: ['owner', 'pa'] as UserRole[] },
+  { href: '/intake-qr', label: 'Intake QR', icon: '📲', roles: ['owner', 'pa'] as UserRole[] },
 ]
 
 interface SidebarProps {
