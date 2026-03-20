@@ -192,10 +192,10 @@ export default function ProductsPage() {
                   <td className="py-2.5 pr-4 font-mono text-xs text-gray-400 whitespace-nowrap">{p.sku}</td>
                   <td className="py-2.5 pr-4">
                     <div className="text-white font-medium">
-                      {p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name}
+                      {(p.name || '').includes(' / ') ? (p.name || '').split(' / ')[1] : (p.name || 'Untitled')}
                     </div>
-                    {p.name.includes(' / ') && (
-                      <div className="text-xs text-gray-500">{p.name.split(' / ')[0]}</div>
+                    {(p.name || '').includes(' / ') && (
+                      <div className="text-xs text-gray-500">{(p.name || '').split(' / ')[0]}</div>
                     )}
                   </td>
                   <td className="py-2.5 pr-4">

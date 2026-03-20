@@ -64,7 +64,8 @@ function PaymentModal({
   onClose: () => void
   onSaved: (updated: Invoice) => void
 }) {
-  const [amount, setAmount] = useState(String(invoice.total_amount))
+  const remainingBalance = invoice.total_amount - (invoice.deposit_amount ?? 0)
+  const [amount, setAmount] = useState(String(remainingBalance))
   const [method, setMethod] = useState('cash')
   const [deposit, setDeposit] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -93,7 +94,18 @@ function PaymentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-gray-900 rounded-2xl border border-gray-700 w-full max-w-sm p-6 space-y-4">
         <h2 className="text-lg font-bold text-white">Record Payment</h2>
-        <p className="text-sm text-gray-400">{invoice.customer?.full_name} · ฿{fmt(invoice.total_amount)}</p>
+        <div className="text-sm text-gray-400">
+          <p>{invoice.customer?.full_name}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <span>Total: ฿{fmt(invoice.total_amount)}</span>
+            {invoice.deposit_amount ? (
+              <span className="text-teal-400 font-medium">Deposit Paid: -฿{fmt(invoice.deposit_amount)}</span>
+            ) : null}
+          </div>
+          {invoice.deposit_amount ? (
+            <p className="text-white font-semibold mt-1">Balance Due: ฿{fmt(remainingBalance)}</p>
+          ) : null}
+        </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
 

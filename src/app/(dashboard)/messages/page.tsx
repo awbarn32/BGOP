@@ -105,11 +105,11 @@ export default function MessagesPage() {
     const cid = msg.customer_id ?? 'unknown'
     if (!seen.has(cid)) {
       seen.add(cid)
-      const customerMsgs = messages.filter((m) => m.customer_id === cid)
+      const customerMsgs = messages.filter((m) => (m.customer_id ?? 'unknown') === cid)
       threads.push({
         customer: msg.customer,
         messages: customerMsgs,
-        lastAt: customerMsgs[0].sent_at,
+        lastAt: customerMsgs[0]?.sent_at ?? msg.sent_at,
         hasInbound: customerMsgs.some((m) => m.message_type === 'inbound'),
       })
     }
@@ -217,10 +217,10 @@ export default function MessagesPage() {
             />
             <button
               onClick={() => { setShowNewConvo(true); setCustomerSearch(''); setNewText(''); setNewResult(null) }}
-              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_20px_rgba(79,70,229,0.5)] transform hover:-translate-y-0.5 flex items-center justify-center"
               title="New conversation"
             >
-              +
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
           </div>
 
@@ -243,8 +243,10 @@ export default function MessagesPage() {
                   <button
                     key={cid}
                     onClick={() => { setSelectedCustomerId(cid); setSendResult(null) }}
-                    className={`w-full text-left px-4 py-3 border-b border-gray-800 transition-colors ${
-                      isSelected ? 'bg-gray-800' : 'hover:bg-gray-800/50'
+                    className={`w-full text-left px-4 py-3 border-b border-gray-800 transition-all duration-200 group ${
+                      isSelected 
+                        ? 'bg-gradient-to-r from-gray-800/80 to-transparent border-l-2 border-indigo-500' 
+                        : 'hover:bg-gradient-to-r hover:from-gray-800/50 hover:to-transparent border-l-2 border-transparent'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -286,8 +288,10 @@ export default function MessagesPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {!selectedCustomerId ? (
             <div className="flex-1 flex flex-col items-center justify-center text-gray-600">
-              <p className="text-4xl mb-3">💬</p>
-              <p className="text-sm">Select a conversation</p>
+              <div className="w-16 h-16 bg-gray-800/30 rounded-full flex items-center justify-center mb-5 animate-[bounce_3s_ease-in-out_infinite]">
+                <p className="text-3xl">💬</p>
+              </div>
+              <p className="text-sm font-medium">Select a conversation</p>
               <button
                 onClick={() => { setShowNewConvo(true); setCustomerSearch(''); setNewText(''); setNewResult(null) }}
                 className="mt-4 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
@@ -326,10 +330,10 @@ export default function MessagesPage() {
                   const isOutbound = OUTBOUND_TYPES.has(msg.message_type)
                   return (
                     <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-sm rounded-2xl px-4 py-2.5 ${
+                      <div className={`max-w-sm rounded-2xl px-4 py-2.5 shadow-sm ${
                         isOutbound
-                          ? 'bg-indigo-700 text-white rounded-tr-sm'
-                          : 'bg-gray-800 text-gray-200 rounded-tl-sm'
+                          ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-tr-sm shadow-indigo-900/20'
+                          : 'bg-gray-800 border border-gray-700/50 text-gray-200 rounded-tl-sm shadow-black/20'
                       }`}>
                         {msg.message_type === 'automated' && (
                           <p className="text-xs text-indigo-300 mb-1">Automated</p>
@@ -385,7 +389,7 @@ export default function MessagesPage() {
                     onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend() }}
                     placeholder={replyLang === 'th' ? 'พิมพ์ข้อความ…' : 'Type a message… (Ctrl+Enter to send)'}
                     rows={2}
-                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                    className="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none shadow-inner"
                     disabled={sending}
                   />
                   <button

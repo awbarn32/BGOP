@@ -117,6 +117,12 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [sendingMsg, setSendingMsg] = useState(false)
   const [msgResult, setMsgResult] = useState<{ ok: boolean; text: string } | null>(null)
 
+  // Deposit recording state
+  const [recordingDeposit, setRecordingDeposit] = useState(false)
+  const [depositAmount, setDepositAmount] = useState('')
+  const [depositMethod, setDepositMethod] = useState<'cash' | 'bank_transfer' | 'promptpay' | 'credit_card' | 'other'>('bank_transfer')
+  const [depositSaving, setDepositSaving] = useState(false)
+
   useEffect(() => {
     if (!jobId) { setJob(null); return }
     setLoading(true)
@@ -324,6 +330,50 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     }
   }
 
+  async function handleRecordDeposit() {
+    if (!job || !job.invoice || !job.invoice[0]) return
+    const amt = parseFloat(depositAmount)
+    if (isNaN(amt) || amt <= 0) {
+      toast('Invalid deposit amount', 'error')
+      return
+    }
+    setDepositSaving(true)
+    try {
+      const invId = job.invoice[0].id
+      const res = await fetch(`/api/invoices/${invId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deposit_amount: amt,
+          payment_method: depositMethod,
+          status: 'deposit_paid'
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast(json.error?.message ?? 'Failed to record deposit', 'error')
+        return
+      }
+      
+      // Also confirm the job if it wasn't already confirmed, since money was received
+      if (job.status !== 'confirmed') {
+        await patch({ status: 'confirmed' as JobStatus })
+      } else {
+        const refreshed = await fetch(`/api/jobs/${job.id}`)
+        const rJson = await refreshed.json()
+        setJob(rJson.data)
+      }
+      
+      setRecordingDeposit(false)
+      setDepositAmount('')
+      toast('Deposit recorded and job confirmed', 'success')
+    } catch {
+      toast('Network error', 'error')
+    } finally {
+      setDepositSaving(false)
+    }
+  }
+
   const isOpen = !!jobId
 
   const lineItemsTotal = job?.line_items.reduce((sum, li) => sum + li.sale_price * li.quantity, 0) ?? 0
@@ -522,10 +572,10 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
 
                   {/* Line items list */}
                   {job.line_items.length > 0 ? (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 font-mono">
                       {job.line_items.map((li) => (
                         <div key={li.id} className="flex items-center justify-between text-xs group">
-                          <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0 font-sans">
                             <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
                               li.line_type === 'labour' ? 'bg-blue-900/40 text-blue-300' : 'bg-amber-900/40 text-amber-300'
                             }`}>
@@ -538,44 +588,120 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                             {li.is_scope_change && <span className="text-orange-400 flex-shrink-0">SC</span>}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                            <span className="text-gray-300 font-mono">฿{(li.sale_price * li.quantity).toLocaleString()}</span>
+                            <span className="text-gray-300">฿{(li.sale_price * li.quantity).toLocaleString()}</span>
                             <button onClick={() => handleDeleteLineItem(li.id)}
-                              className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title="Remove item">✕</button>
+                              className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all font-sans" title="Remove item">✕</button>
                           </div>
                         </div>
                       ))}
-                      <div className="border-t border-gray-700 pt-1.5 flex justify-between text-sm font-semibold">
-                        <span className="text-gray-400">Total</span>
-                        <span className="text-white font-mono">฿{lineItemsTotal.toLocaleString()}</span>
+                      <div className="border-t border-gray-700 pt-1.5 mt-2 space-y-1">
+                        <div className="flex justify-between text-sm font-semibold">
+                          <span className="text-gray-400 font-sans">Total</span>
+                          <span className="text-white">฿{lineItemsTotal.toLocaleString()}</span>
+                        </div>
+                        {inv && inv.deposit_amount && (
+                          <>
+                            <div className="flex justify-between text-sm text-teal-400">
+                              <span className="font-sans">Deposit Paid</span>
+                              <span>- ฿{inv.deposit_amount.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-bold text-white pt-1 border-t border-gray-800">
+                              <span className="font-sans">Balance Due</span>
+                              <span>฿{Math.max(0, lineItemsTotal - inv.deposit_amount).toLocaleString()}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   ) : !addingItem ? (
                     <p className="text-xs text-gray-600 text-center py-3">No items yet — click + Add Item to build the quote</p>
                   ) : null}
 
+                  {/* Record Deposit inline form */}
+                  {recordingDeposit && (
+                    <div className="mt-4 p-4 bg-teal-900/20 border border-teal-800/40 rounded-xl space-y-3">
+                      <p className="text-sm font-medium text-teal-300">Record Deposit Payment</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Amount ฿ (THB)</p>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="e.g. 5000"
+                            value={depositAmount}
+                            onChange={(e) => setDepositAmount(e.target.value)}
+                            className="w-full px-3 py-2 bg-gray-900 border border-teal-900 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Method</p>
+                          <select
+                            value={depositMethod}
+                            onChange={(e) => setDepositMethod(e.target.value as any)}
+                            className="w-full px-3 py-2 bg-gray-900 border border-teal-900 rounded-lg text-sm text-white focus:outline-none focus:border-teal-500"
+                          >
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="promptpay">PromptPay</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="cash">Cash</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setRecordingDeposit(false); setDepositAmount('') }}
+                          className="flex-1 py-1.5 rounded-lg border border-teal-900 text-xs text-teal-400 hover:border-teal-700 transition-colors"
+                        >Cancel</button>
+                        <button
+                          onClick={handleRecordDeposit}
+                          disabled={depositSaving || !depositAmount}
+                          className="flex-1 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-xs text-white font-medium transition-colors"
+                        >{depositSaving ? 'Saving…' : 'Save Deposit'}</button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quote action buttons */}
-                  {inv && inv.status !== 'void' && (
+                  {inv && inv.status !== 'void' && !recordingDeposit && (
                     <div className="mt-3 flex gap-2">
                       {job.status !== 'quote_sent' && job.status !== 'confirmed' && inv.status === 'quote' && job.line_items.length > 0 && (
                         <button
                           onClick={handleSendQuote}
                           disabled={saving}
-                          className="flex-1 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                          className="flex-1 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
                         >
                           📤 Send Quote
+                        </button>
+                      )}
+                      {(job.status === 'quote_sent' || inv.status === 'quote') && !inv.deposit_amount && (
+                        <button
+                          onClick={() => setRecordingDeposit(true)}
+                          disabled={saving}
+                          className="flex-1 py-2 rounded-xl bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                        >
+                          💰 Record Deposit
                         </button>
                       )}
                       {job.status === 'quote_sent' && (
                         <button
                           onClick={handleConfirmJob}
                           disabled={saving}
-                          className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                          className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
                         >
                           ✓ Confirm Job
                         </button>
                       )}
-                      {inv.status === 'approved' && (
-                        <div className="flex-1 text-center py-2 text-sm text-emerald-400 font-semibold">
+                      {inv.status === 'approved' && !inv.deposit_amount && (
+                        <button
+                          onClick={() => setRecordingDeposit(true)}
+                          disabled={saving}
+                          className="flex-1 py-2 rounded-xl bg-teal-700 hover:bg-teal-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                        >
+                          💰 Record Deposit
+                        </button>
+                      )}
+                      {(inv.status === 'approved' || inv.status === 'deposit_paid') && job.status === 'confirmed' && (
+                        <div className="flex-1 text-center py-2 text-sm text-emerald-400 font-semibold bg-emerald-900/20 rounded-xl">
                           ✓ Job Confirmed
                         </div>
                       )}

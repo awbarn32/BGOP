@@ -100,7 +100,7 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
     }
   }
 
-  const subcategoryOptions = SUBCATEGORIES[form.category]
+  const subcategoryOptions = SUBCATEGORIES[form.category] || []
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
