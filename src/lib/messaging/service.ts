@@ -10,7 +10,6 @@
  */
 
 import OpenAI from 'openai'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pushMessage, isDemoMode } from '@/lib/line/client'
 import type { LineMessage } from '@/lib/line/client'
