@@ -120,7 +120,7 @@ export default function MessagesPage() {
     return (t.customer?.full_name ?? '').toLowerCase().includes(search.toLowerCase())
   })
 
-  const selectedThread = threads.find((t) => t.customer?.id === selectedCustomerId)
+  const selectedThread = threads.find((t) => (t.customer?.id ?? 'unknown') === selectedCustomerId)
   const threadMessages = selectedThread
     ? [...selectedThread.messages].sort((a, b) =>
         new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
@@ -304,7 +304,7 @@ export default function MessagesPage() {
               {/* Thread header */}
               <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
                 <div>
-                  <p className="font-semibold text-white">{selectedThread?.customer?.full_name}</p>
+                  <p className="font-semibold text-white">{selectedThread?.customer?.full_name ?? 'Unknown Customer'}</p>
                   <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
                     {selectedThread?.customer?.phone && <span>{selectedThread.customer.phone}</span>}
                     {selectedThread?.customer?.line_id ? (
