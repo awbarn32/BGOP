@@ -19,7 +19,11 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     if (open) {
       if (!dialog.open) dialog.showModal()
     } else {
-      dialog.close()
+      if (dialog.open) dialog.close()
+    }
+
+    return () => {
+      if (dialog.open) dialog.close()
     }
   }, [open])
 

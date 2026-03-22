@@ -1,0 +1,9 @@
+src/app/(dashboard)/board/page.tsx
+src/app/(dashboard)/jobs/[id]/page.tsx
+src/app/api/intake/route.ts
+src/app/mechanic/page.tsx
+src/components/jobs/JobCard.tsx
+src/components/jobs/JobDrawer.tsx
+src/lib/messaging/service.ts
+src/types/domain.ts
+supabase/config.toml

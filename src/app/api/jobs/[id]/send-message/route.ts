@@ -2,7 +2,7 @@
  * POST /api/jobs/[id]/send-message
  *
  * PA sends a direct message to the job's customer via LINE.
- * Claude AI auto-translates to produce a bilingual message.
+ * GPT-5 mini auto-translates to produce a bilingual message.
  *
  * Body: { text: string, sender_language: 'th' | 'en' }
  */
@@ -61,6 +61,7 @@ export async function POST(request: Request, { params }: Params) {
     text,
     senderLanguage: sender_language,
     recipientLanguage: recipient_language,
+    sentByUserId: user.id,
   })
 
   if (!result.ok) {

@@ -106,6 +106,8 @@ export interface Customer {
   full_name: string
   phone: string | null
   line_id: string | null
+  line_display_name: string | null
+  line_picture_url: string | null
   email: string | null
   nationality: string | null
   preferred_language: Language
@@ -198,6 +200,7 @@ export interface Job {
   revenue_stream: RevenueStream | null
   description: string    // Bilingual delimiter format
   mechanic_notes: string | null
+  pickup_address: string | null
   intake_mileage: number | null
   completion_mileage: number | null
   intake_photos: string[] | null
@@ -275,11 +278,14 @@ export interface ScopeChange {
   job_id: string
   flagged_by: string | null
   entered_by: string | null
+  reviewed_by: string | null
   description: string
   mechanic_notes: string | null
   amount_thb: number
   status: ScopeChangeStatus
   customer_response_at: string | null
+  reviewed_at: string | null
+  pa_notes: string | null
   created_at: string
 }
 
@@ -380,6 +386,89 @@ export interface Expense {
   updated_at: string
 }
 
+export interface ConversationThread {
+  id: string
+  channel: string
+  line_user_id: string | null
+  customer_id: string | null
+  active_job_id: string | null
+  latest_message_at: string | null
+  latest_message_preview: string | null
+  last_inbound_at: string | null
+  last_outbound_at: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationMessage {
+  id: string
+  thread_id: string
+  direction: 'inbound' | 'outbound' | 'system'
+  sender_role: string | null
+  message_type: string
+  body_text: string | null
+  delivery_status: string
+  sent_by_user_id: string | null
+  sent_at: string
+  created_at: string
+}
+
+export interface ConversationMessageLocalization {
+  message_id: string
+  source_language: 'th' | 'en' | 'unknown'
+  text_en: string | null
+  text_th: string | null
+  model: string | null
+  prompt_version: string | null
+  translated_at: string
+  input_tokens: number
+  cached_input_tokens: number
+  output_tokens: number
+  reasoning_tokens: number
+  estimated_cost_usd: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationThreadAiState {
+  thread_id: string
+  summary_json: Record<string, unknown>
+  last_summarized_message_id: string | null
+  summarized_message_count: number
+  model: string | null
+  prompt_version: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationAiRun {
+  id: string
+  thread_id: string | null
+  message_id: string | null
+  feature: 'translation' | 'summary' | 'reply_draft'
+  status: 'success' | 'error'
+  model: string | null
+  prompt_version: string | null
+  input_tokens: number
+  cached_input_tokens: number
+  output_tokens: number
+  reasoning_tokens: number
+  estimated_cost_usd: number
+  error_message: string | null
+  created_at: string
+}
+
+export interface ConversationThreadUserState {
+  thread_id: string
+  user_id: string
+  last_read_message_id: string | null
+  last_read_at: string | null
+  is_resolved: boolean
+  resolved_at: string | null
+}
+
 // ============================================================
 // Enriched types (with joins)
 // ============================================================
@@ -426,6 +515,13 @@ export type Database = {
       expenses: { Row: Expense; Insert: Omit<Expense, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Expense, 'id'>> }
       discounts: { Row: Discount; Insert: Omit<Discount, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Discount, 'id'>> }
       vehicle_reminder_log: { Row: VehicleReminderLog; Insert: Omit<VehicleReminderLog, 'id' | 'created_at'>; Update: Partial<Omit<VehicleReminderLog, 'id'>> }
+      conversation_threads: { Row: ConversationThread; Insert: Omit<ConversationThread, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<ConversationThread, 'id' | 'created_at'>> }
+      conversation_messages: { Row: ConversationMessage; Insert: Omit<ConversationMessage, 'id' | 'created_at' | 'sent_at'>; Update: Partial<Omit<ConversationMessage, 'id' | 'created_at' | 'thread_id'>> }
+      conversation_message_localizations: { Row: ConversationMessageLocalization; Insert: Omit<ConversationMessageLocalization, 'created_at' | 'updated_at'>; Update: Partial<Omit<ConversationMessageLocalization, 'message_id' | 'created_at'>> }
+      conversation_thread_ai_state: { Row: ConversationThreadAiState; Insert: Omit<ConversationThreadAiState, 'created_at' | 'updated_at'>; Update: Partial<Omit<ConversationThreadAiState, 'thread_id' | 'created_at'>> }
+      conversation_ai_runs: { Row: ConversationAiRun; Insert: Omit<ConversationAiRun, 'id' | 'created_at'>; Update: never }
+      conversation_thread_user_state: { Row: ConversationThreadUserState; Insert: ConversationThreadUserState; Update: Partial<ConversationThreadUserState> }
+      line_webhook_events: { Row: { id: string; webhook_event_id: string; processed_at: string }; Insert: Omit<{ id: string; webhook_event_id: string; processed_at: string }, 'id' | 'processed_at'>; Update: never }
     }
     Functions: Record<string, never>
     Enums: Record<string, never>

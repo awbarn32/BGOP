@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -37,7 +36,6 @@ const REVENUE_STREAMS = [
 
 export default function BoardPage() {
   const { toast } = useToast()
-  const router = useRouter()
   const [jobs, setJobs] = useState<JobCardType[]>([])
   const [loading, setLoading] = useState(true)
   const [mechanics, setMechanics] = useState<Pick<User, 'id' | 'full_name'>[]>([])
@@ -59,27 +57,41 @@ export default function BoardPage() {
   )
 
   const fetchJobs = useCallback(async () => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
     try {
-      const res = await fetch('/api/jobs')
+      const res = await fetch('/api/jobs', {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
       const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json.error?.message ?? 'Failed to load jobs')
+      }
       setJobs(json.data ?? [])
     } catch {
       toast('Failed to load jobs', 'error')
     } finally {
+      clearTimeout(timeout)
       setLoading(false)
     }
   }, [toast])
 
   useEffect(() => {
-    // Get current user's role for priority controls
-    createClient().auth.getUser().then(({ data }) => {
-      setUserRole(data.user?.app_metadata?.role ?? '')
-    })
+    try {
+      // Get current user's role for priority controls
+      createClient().auth.getUser().then(({ data }) => {
+        setUserRole(data.user?.app_metadata?.role ?? '')
+      }).catch(() => {})
 
-    fetchJobs()
+      void fetchJobs()
+    } catch {
+      setLoading(false)
+    }
 
-    // Load mechanics for JobDrawer assignment dropdown
-    fetch('/api/users')
+    // Load mechanics for board filtering
+    fetch('/api/users', { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((j) => {
         if (j?.data) {
@@ -90,23 +102,26 @@ export default function BoardPage() {
       })
       .catch(() => {})
 
-    // Realtime
-    channelRef.current = subscribeToKanbanUpdates(({ eventType, job }) => {
-      if (eventType === 'INSERT') {
-        // Refetch to get joined customer/vehicle data
-        fetchJobs()
-        return
-      }
-      if (eventType === 'UPDATE') {
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === job.id
-              ? { ...j, bucket: job.bucket as Bucket, status: job.status as JobCardType['status'], priority: job.priority, mechanic_id: job.mechanic_id }
-              : j
+    try {
+      // Realtime
+      channelRef.current = subscribeToKanbanUpdates(({ eventType, job }) => {
+        if (eventType === 'INSERT') {
+          void fetchJobs()
+          return
+        }
+        if (eventType === 'UPDATE') {
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === job.id
+                ? { ...j, bucket: job.bucket as Bucket, status: job.status as JobCardType['status'], priority: job.priority, mechanic_id: job.mechanic_id }
+                : j
+            )
           )
-        )
-      }
-    })
+        }
+      })
+    } catch {
+      // Do not block board rendering if realtime subscription fails.
+    }
 
     return () => {
       if (channelRef.current) unsubscribe(channelRef.current)
@@ -142,16 +157,19 @@ export default function BoardPage() {
         prev.map((j) => j.id === activeId ? { ...j, bucket: newBucket, status: newStatus } : j)
       )
       try {
-        const res = await fetch(`/api/jobs/${activeId}`, {
-          method: 'PATCH',
+        const res = await fetch(`/api/jobs/${activeId}/transition`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bucket: newBucket, status: newStatus }),
+          body: JSON.stringify({ to_bucket: newBucket, to_status: newStatus }),
         })
         if (!res.ok) {
           setJobs((prev) =>
             prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
           )
           toast('Failed to move job', 'error')
+        } else {
+          const json = await res.json()
+          handleJobUpdated(json.data)
         }
       } catch {
         setJobs((prev) =>
@@ -207,16 +225,19 @@ export default function BoardPage() {
           prev.map((j) => j.id === activeId ? { ...j, bucket: newBucket, status: newStatus } : j)
         )
         try {
-          const res = await fetch(`/api/jobs/${activeId}`, {
-            method: 'PATCH',
+          const res = await fetch(`/api/jobs/${activeId}/transition`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bucket: newBucket, status: newStatus }),
+            body: JSON.stringify({ to_bucket: newBucket, to_status: newStatus }),
           })
           if (!res.ok) {
             setJobs((prev) =>
               prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
             )
             toast('Failed to move job', 'error')
+          } else {
+            const json = await res.json()
+            handleJobUpdated(json.data)
           }
         } catch {
           setJobs((prev) =>
@@ -225,6 +246,15 @@ export default function BoardPage() {
           toast('Failed to move job', 'error')
         }
       }
+    }
+  }
+
+  function handleJobUpdated(updated: JobCardType) {
+    // If archived, remove from board
+    if ('archived_at' in updated && (updated as { archived_at: string | null }).archived_at) {
+      setJobs((prev) => prev.filter((j) => j.id !== updated.id))
+    } else {
+      setJobs((prev) => prev.map((j) => (j.id === updated.id ? { ...j, ...updated } : j)))
     }
   }
 
@@ -362,17 +392,17 @@ export default function BoardPage() {
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
+          onDragCancel={() => setActiveJob(null)}
           onDragEnd={handleDragEnd}
         >
           {/* Horizontally scrollable board */}
           <div className="flex-1 overflow-x-auto overflow-y-hidden">
             <div className="flex gap-3 h-full p-4" style={{ minWidth: 'max-content' }}>
               {BUCKET_ORDER.map((bucket) => (
-                <div key={bucket} className="flex flex-col h-full w-[248px] flex-shrink-0">
+                <div key={bucket} className="flex flex-col h-full w-[280px] flex-shrink-0">
                   <KanbanColumn
                     bucket={bucket}
                     jobs={jobsByBucket[bucket]}
-                    onCardClick={(job) => router.push(`/jobs/${job.id}`)}
                     canReorder={canReorder}
                     onPriorityChange={handlePriorityChange}
                   />
@@ -383,8 +413,8 @@ export default function BoardPage() {
 
           <DragOverlay dropAnimation={null}>
             {activeJob ? (
-              <div className="w-[248px]">
-                <JobCard job={activeJob} onClick={() => {}} isDragOverlay />
+              <div className="w-[280px]">
+                <JobCard job={activeJob} isDragOverlay />
               </div>
             ) : null}
           </DragOverlay>

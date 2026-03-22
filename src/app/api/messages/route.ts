@@ -8,13 +8,13 @@
  */
 
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSessionUser } from '@/lib/supabase/server'
 import { unauthorizedError, forbiddenError, validationError, serverError } from '@/lib/utils/validation'
 import { sendDirectMessage } from '@/lib/messaging/service'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) return unauthorizedError()
 
   const role = user.app_metadata?.role as string
@@ -64,7 +64,7 @@ const SendSchema = z.object({
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) return unauthorizedError()
 
   const role = user.app_metadata?.role as string
@@ -104,6 +104,7 @@ export async function POST(request: Request) {
     text,
     senderLanguage: sender_language,
     recipientLanguage: recipient_language,
+    sentByUserId: user.id,
   })
 
   if (!result.ok) return serverError(result.error ?? 'Failed to send message')

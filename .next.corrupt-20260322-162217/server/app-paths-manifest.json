@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/templates/route": "app/api/templates/route.js",
+  "/api/jobs/route": "app/api/jobs/route.js",
+  "/api/users/route": "app/api/users/route.js",
+  "/(dashboard)/board/page": "app/(dashboard)/board/page.js",
+  "/(dashboard)/customers/[id]/page": "app/(dashboard)/customers/[id]/page.js",
+  "/(dashboard)/messages/page": "app/(dashboard)/messages/page.js",
+  "/(dashboard)/intake-qr/page": "app/(dashboard)/intake-qr/page.js",
+  "/(dashboard)/vehicles/page": "app/(dashboard)/vehicles/page.js",
+  "/(dashboard)/customers/page": "app/(dashboard)/customers/page.js",
+  "/(dashboard)/products/page": "app/(dashboard)/products/page.js",
+  "/(dashboard)/invoices/page": "app/(dashboard)/invoices/page.js",
+  "/(dashboard)/templates/page": "app/(dashboard)/templates/page.js",
+  "/(dashboard)/expenses/page": "app/(dashboard)/expenses/page.js",
+  "/(dashboard)/reports/page": "app/(dashboard)/reports/page.js"
+}

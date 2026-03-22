@@ -6,6 +6,7 @@ import {
   forbiddenError,
   serverError,
 } from '@/lib/utils/validation'
+import { transitionJob } from '@/lib/jobs/lifecycle'
 
 const ORDER_SELECT = `
   id, job_id, driver_id, order_type, status, pickup_address, delivery_address,
@@ -82,6 +83,14 @@ export async function POST(request: Request) {
 
   const { job_id, order_type, driver_id, pickup_address, delivery_address, scheduled_date, notes } = parsed.data
 
+  const { data: job } = await supabase
+    .from('jobs')
+    .select('id, pickup_address')
+    .eq('id', job_id)
+    .single()
+
+  if (!job) return serverError('Job not found')
+
   const insertPayload: Record<string, unknown> = {
     job_id,
     order_type,
@@ -92,6 +101,9 @@ export async function POST(request: Request) {
   if (delivery_address !== undefined) insertPayload.delivery_address = delivery_address
   if (scheduled_date !== undefined) insertPayload.scheduled_date = scheduled_date
   if (notes !== undefined) insertPayload.notes = notes
+  if (order_type === 'pickup' && insertPayload.pickup_address == null) {
+    insertPayload.pickup_address = job.pickup_address ?? null
+  }
 
   const { data, error } = await supabase
     .from('driver_work_orders')
@@ -102,13 +114,17 @@ export async function POST(request: Request) {
   if (error) return serverError(error.message)
   if (!data) return serverError('No data returned')
 
-  // If driver assigned, update job status to driver_assigned
   if (driver_id) {
-    await supabase
-      .from('jobs')
-      .update({ status: 'driver_assigned' })
-      .eq('id', job_id)
-      .in('status', ['awaiting_drop_off', 'awaiting_pickup'])
+    try {
+      await transitionJob({
+        supabase,
+        jobId: job_id,
+        toBucket: order_type === 'pickup' ? 'intake' : 'outbound',
+        toStatus: order_type === 'pickup' ? 'driver_assigned' : 'driver_assigned_delivery',
+      })
+    } catch {
+      // Keep work-order creation successful even if the job is already in the expected state.
+    }
   }
 
   return Response.json({ data }, { status: 201 })

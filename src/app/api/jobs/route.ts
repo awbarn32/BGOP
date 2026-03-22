@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSessionUser } from '@/lib/supabase/server'
 import {
   CreateJobSchema,
   validationError,
@@ -11,6 +11,7 @@ import {
 const CARD_SELECT = `
   id, bucket, status, priority, description,
   revenue_stream, logistics_type, mechanic_id,
+  intake_photos,
   owner_notify_threshold_thb, created_at, updated_at,
   customer:customers(id, full_name, phone, line_id),
   vehicle:vehicles(id, make, model, year, license_plate),
@@ -20,7 +21,7 @@ const CARD_SELECT = `
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) return unauthorizedError()
 
   const { searchParams } = new URL(request.url)
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) return unauthorizedError()
 
   const role = user.app_metadata?.role
