@@ -149,16 +149,19 @@ export default function BoardPage() {
         prev.map((j) => j.id === activeId ? { ...j, bucket: newBucket, status: newStatus } : j)
       )
       try {
-        const res = await fetch(`/api/jobs/${activeId}`, {
-          method: 'PATCH',
+        const res = await fetch(`/api/jobs/${activeId}/transition`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bucket: newBucket, status: newStatus }),
+          body: JSON.stringify({ to_bucket: newBucket, to_status: newStatus }),
         })
         if (!res.ok) {
           setJobs((prev) =>
             prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
           )
           toast('Failed to move job', 'error')
+        } else {
+          const json = await res.json()
+          handleJobUpdated(json.data)
         }
       } catch {
         setJobs((prev) =>
@@ -214,16 +217,19 @@ export default function BoardPage() {
           prev.map((j) => j.id === activeId ? { ...j, bucket: newBucket, status: newStatus } : j)
         )
         try {
-          const res = await fetch(`/api/jobs/${activeId}`, {
-            method: 'PATCH',
+          const res = await fetch(`/api/jobs/${activeId}/transition`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bucket: newBucket, status: newStatus }),
+            body: JSON.stringify({ to_bucket: newBucket, to_status: newStatus }),
           })
           if (!res.ok) {
             setJobs((prev) =>
               prev.map((j) => j.id === activeId ? { ...j, bucket: prevBucket, status: prevStatus } : j)
             )
             toast('Failed to move job', 'error')
+          } else {
+            const json = await res.json()
+            handleJobUpdated(json.data)
           }
         } catch {
           setJobs((prev) =>

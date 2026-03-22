@@ -187,6 +187,7 @@ export interface Job {
   revenue_stream: RevenueStream | null
   description: string    // Bilingual delimiter format
   mechanic_notes: string | null
+  pickup_address: string | null
   intake_mileage: number | null
   completion_mileage: number | null
   intake_photos: string[] | null
@@ -251,11 +252,14 @@ export interface ScopeChange {
   job_id: string
   flagged_by: string | null
   entered_by: string | null
+  reviewed_by: string | null
   description: string
   mechanic_notes: string | null
   amount_thb: number
   status: ScopeChangeStatus
   customer_response_at: string | null
+  reviewed_at: string | null
+  pa_notes: string | null
   created_at: string
 }
 

@@ -7,13 +7,14 @@ import {
   notFoundError,
   serverError,
 } from '@/lib/utils/validation'
+import { assignMechanic } from '@/lib/jobs/lifecycle'
 
 type Params = { params: Promise<{ id: string }> }
 
 const DETAIL_SELECT = `
   id, bucket, status, priority, description, mechanic_notes,
   revenue_stream, logistics_type, mechanic_id,
-  intake_mileage, completion_mileage,
+  pickup_address, intake_mileage, completion_mileage, intake_photos,
   owner_notify_threshold_thb,
   created_at, updated_at, completed_at, archived_at,
   customer:customers(id, full_name, phone, line_id, preferred_language, notes),
@@ -76,11 +77,41 @@ export async function PATCH(request: Request, { params }: Params) {
     if (attempted.some((k) => !allowed.has(k))) return forbiddenError()
   }
 
+  const payload = parsed.data
+
+  try {
+    if (!isMechanic && Object.prototype.hasOwnProperty.call(payload, 'mechanic_id')) {
+      await assignMechanic({
+        supabase,
+        jobId: id,
+        mechanicId: payload.mechanic_id ?? null,
+      })
+
+      const { mechanic_id: _mechanicId, ...rest } = payload
+      if (Object.keys(rest).length > 0) {
+        const { error } = await supabase
+          .from('jobs')
+          .update(rest)
+          .eq('id', id)
+
+        if (error) return serverError(error.message)
+      }
+    } else if (Object.keys(payload).length > 0) {
+      const { error } = await supabase
+        .from('jobs')
+        .update(payload)
+        .eq('id', id)
+
+      if (error) return serverError(error.message)
+    }
+  } catch (error) {
+    return validationError(error instanceof Error ? error.message : 'Failed to update job')
+  }
+
   const { data, error } = await supabase
     .from('jobs')
-    .update(parsed.data)
-    .eq('id', id)
     .select(DETAIL_SELECT)
+    .eq('id', id)
     .single()
 
   if (error) return serverError(error.message)

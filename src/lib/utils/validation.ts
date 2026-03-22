@@ -136,7 +136,9 @@ export const CreateJobSchema = z.object({
     'service', 'transport', 'dlt', 'sourcing', 'commission', 'ecu', 'track_day', 'bike_hotel'
   ]).nullable().optional(),
   description: z.string().min(1).max(5000),
+  pickup_address: z.string().max(2000).nullable().optional(),
   intake_mileage: z.number().int().nonnegative().nullable().optional(),
+  intake_photos: z.array(z.string().min(1).max(400000)).max(4).nullable().optional(),
   owner_notify_threshold_thb: z.number().int().nonnegative().default(2000),
 })
 
@@ -157,6 +159,7 @@ export const CustomerIntakeSchema = z.object({
     model: z.string().min(1).max(100),
     year: z.number().int().min(1970).max(new Date().getFullYear() + 1),
     license_plate: z.string().max(20).optional(),
+    color: z.string().max(50).optional(),
   }),
   service: z.string().min(1).max(5000),
   logistics: z.enum(['drop_off', 'pickup']),
@@ -164,15 +167,6 @@ export const CustomerIntakeSchema = z.object({
 
 
 export const UpdateJobSchema = z.object({
-  bucket: z.enum(['new_requests', 'intake', 'available_jobs', 'wip', 'outbound']).optional(),
-  status: z.enum([
-    'new', 'under_review', 'awaiting_customer', 'quote_sent', 'confirmed',
-    'awaiting_drop_off', 'driver_assigned', 'picked_up', 'in_transit', 'received_at_shop',
-    'awaiting_assignment', 'awaiting_parts', 'awaiting_approval',
-    'work_started', 'paused_parts', 'paused_approval', 'work_completed',
-    'awaiting_pickup', 'driver_assigned_delivery', 'out_for_delivery', 'returned_to_customer',
-    'withdrawn', 'rejected', 'archived',
-  ]).optional(),
   mechanic_id: uuid.nullable().optional(),
   priority: z.number().int().optional(),
   logistics_type: z.enum(['drop_off', 'pickup']).nullable().optional(),
@@ -181,8 +175,10 @@ export const UpdateJobSchema = z.object({
   ]).nullable().optional(),
   description: z.string().min(1).max(5000).optional(),
   mechanic_notes: z.string().max(5000).nullable().optional(),
+  pickup_address: z.string().max(2000).nullable().optional(),
   intake_mileage: z.number().int().nonnegative().nullable().optional(),
   completion_mileage: z.number().int().nonnegative().nullable().optional(),
+  intake_photos: z.array(z.string().min(1).max(400000)).max(4).nullable().optional(),
   owner_notify_threshold_thb: z.number().int().nonnegative().optional(),
   completed_at: z.string().datetime().nullable().optional(),
   archived_at: z.string().datetime().nullable().optional(),

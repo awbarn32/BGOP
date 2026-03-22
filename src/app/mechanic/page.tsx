@@ -130,13 +130,15 @@ export default function MechanicPage() {
   async function updateStatus(jobId: string, status: JobStatus) {
     setSavingMap((p) => ({ ...p, [jobId]: true }))
     try {
-      const res = await fetch(`/api/jobs/${jobId}`, {
-        method: 'PATCH',
+      const job = jobs.find((item) => item.id === jobId)
+      if (!job) throw new Error()
+      const res = await fetch(`/api/jobs/${jobId}/transition`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ to_bucket: job.bucket, to_status: status }),
       })
       if (!res.ok) throw new Error()
-      setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status } : j))
+      await fetchJobs()
       showToast(TH.saved)
     } catch {
       showToast(TH.error, false)

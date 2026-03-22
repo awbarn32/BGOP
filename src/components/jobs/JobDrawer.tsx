@@ -12,6 +12,7 @@ import type { JobCard } from '@/types/kanban'
 // Full job detail shape (from GET /api/jobs/[id])
 interface JobDetail extends JobCard {
   mechanic_notes: string | null
+  pickup_address: string | null
   intake_mileage: number | null
   completion_mileage: number | null
   completed_at: string | null
@@ -201,9 +202,36 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     }
   }
 
+  async function transition(toBucket: Bucket, toStatus: JobStatus) {
+    if (!job) return false
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to_bucket: toBucket, to_status: toStatus }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast(json.error?.message ?? 'Transition failed', 'error')
+        return false
+      }
+      setJob(json.data)
+      onJobUpdated(json.data)
+      toast('Updated', 'success')
+      return true
+    } catch {
+      toast('Network error', 'error')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleStatusChange(newStatus: JobStatus) {
     setStatusEdit(newStatus)
-    await patch({ status: newStatus })
+    if (!job) return
+    await transition(job.bucket, newStatus)
   }
 
   async function handleMechanicChange(mechanicId: string) {
@@ -217,10 +245,11 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   }
 
   async function handleMarkComplete() {
-    await patch({
-      bucket: 'outbound' as Bucket,
-      status: 'awaiting_pickup' as JobStatus,
-    })
+    if (!job) return
+    await transition(
+      'outbound',
+      job.logistics_type === 'pickup' ? 'driver_assigned_delivery' : 'awaiting_pickup'
+    )
   }
 
   async function handleSendMessage() {
@@ -257,7 +286,6 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     if (!confirm('Archive this job? It will leave the board.')) return
     await patch({
       archived_at: new Date().toISOString(),
-      status: 'archived' as JobStatus,
     })
     onClose()
   }
@@ -382,7 +410,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   async function handleSendQuote() {
     if (!job) return
     if (!confirm('Mark quote as sent and update job status to Quote Sent?')) return
-    await patch({ status: 'quote_sent' as JobStatus })
+    await transition(job.bucket, 'quote_sent')
   }
 
   async function handleSendQuoteLink() {
@@ -417,8 +445,10 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
         setMsgResult({ ok: false, text: json.error?.message ?? 'Failed to send link' })
       } else {
         // 4. Update job status to quote_sent
-        await patch({ status: 'quote_sent' as JobStatus })
-        setMsgResult({ ok: true, text: 'Digital Quote link sent via LINE ✓' })
+        const ok = await transition(job.bucket, 'quote_sent')
+        if (ok) {
+          setMsgResult({ ok: true, text: 'Digital Quote link sent via LINE ✓' })
+        }
       }
     } catch {
       setMsgResult({ ok: false, text: 'Network error' })
@@ -431,20 +461,20 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     if (!job) return
     const inv = job.invoice?.[0]
     if (!confirm('Confirm the job? This marks the customer as approved and locks the quote.')) return
-    // Update job status
-    await patch({ status: 'confirmed' as JobStatus })
-    // Update invoice status to approved
+    let invoiceOk = true
     if (inv) {
-      await fetch(`/api/invoices/${inv.id}`, {
+      const invoiceRes = await fetch(`/api/invoices/${inv.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'approved' }),
       })
-      // Refresh job to get updated invoice
-      const refreshed = await fetch(`/api/jobs/${job.id}`)
-      const rJson = await refreshed.json()
-      setJob(rJson.data)
+      invoiceOk = invoiceRes.ok
     }
+    if (!invoiceOk) {
+      toast('Failed to approve invoice', 'error')
+      return
+    }
+    await transition(job.bucket, 'confirmed')
   }
 
   async function handleRecordDeposit() {
@@ -474,7 +504,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
       
       // Also confirm the job if it wasn't already confirmed, since money was received
       if (job.status !== 'confirmed') {
-        await patch({ status: 'confirmed' as JobStatus })
+        await transition(job.bucket, 'confirmed')
       } else {
         const refreshed = await fetch(`/api/jobs/${job.id}`)
         const rJson = await refreshed.json()
