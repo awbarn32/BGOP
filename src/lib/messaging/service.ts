@@ -13,6 +13,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { pushMessage, isDemoMode } from '@/lib/line/client'
 import { recordConversationMessage } from '@/lib/messaging/conversations'
 import { persistMessageLocalization } from '@/lib/messaging/ai'
+import { isLocalizationReady } from '@/lib/messaging/localization'
 import type { LineMessage } from '@/lib/line/client'
 
 // ── Core send function ────────────────────────────────────────────────────────
@@ -183,6 +184,13 @@ export async function sendDirectMessage(opts: DirectMessageOptions): Promise<Sen
     opts.recipientLanguage === 'th'
       ? localization?.text_th ?? opts.text
       : localization?.text_en ?? opts.text
+
+  if (opts.senderLanguage !== opts.recipientLanguage && !isLocalizationReady(localization ?? null)) {
+    return {
+      ok: false,
+      error: `Translation unavailable. Add a valid OPENAI_API_KEY or send the message in ${opts.recipientLanguage.toUpperCase()} manually.`,
+    }
+  }
 
   const result = await sendLineMessage({
     customerId: opts.customerId,

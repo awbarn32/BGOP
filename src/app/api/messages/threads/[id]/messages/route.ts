@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getLocalizationStatus } from '@/lib/messaging/localization'
 import { unauthorizedError, forbiddenError, serverError } from '@/lib/utils/validation'
 
 type Params = { params: Promise<{ id: string }> }
@@ -47,7 +48,7 @@ export async function GET(_request: Request, { params }: Params) {
     return {
       ...message,
       localization,
-      translation_status: localization ? 'ready' : 'missing',
+      translation_status: getLocalizationStatus(localization),
     }
   })
 

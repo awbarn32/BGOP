@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isLocalizationReady, type MessageLocalization } from '@/lib/messaging/localization'
 
 export type Language = 'th' | 'en'
 
@@ -41,17 +42,13 @@ type TranscriptMessage = {
   message_type?: string | null
   body_text: string | null
   sent_at: string
-  localization?: {
-    source_language: 'th' | 'en' | 'unknown'
-    text_en: string | null
-    text_th: string | null
-  } | null
+  localization?: MessageLocalization | null
 }
 
 type TranslationResult = {
   source_language: 'th' | 'en'
-  text_th: string
-  text_en: string
+  text_th: string | null
+  text_en: string | null
 }
 
 type SummaryResult = {
@@ -68,17 +65,65 @@ type ReplyDraftResult = {
   preview_for_customer: string
 }
 
-const MODEL = 'gpt-5-mini'
+const DEFAULT_MODEL = 'gpt-5-mini'
+const OPENROUTER_MODEL = 'openai/gpt-5-mini'
 const PROMPT_VERSION = 'v1'
 const SUMMARY_UNSUMMARIZED_THRESHOLD = 5
 const TRANSLATION_INPUT_PRICE_PER_1M = 0.25
 const TRANSLATION_CACHED_INPUT_PRICE_PER_1M = 0.025
 const TRANSLATION_OUTPUT_PRICE_PER_1M = 2
+const INVALID_OPENAI_KEYS = new Set(['placeholder', '[your-openai-api-key]'])
+
+function getAiConfig() {
+  const openRouterKey = process.env.OPENROUTER_API_KEY?.trim()
+  const openAiKey = process.env.OPENAI_API_KEY?.trim()
+
+  if (openRouterKey) {
+    return {
+      apiKey: openRouterKey,
+      baseURL: process.env.OPENAI_BASE_URL?.trim() || 'https://openrouter.ai/api/v1',
+      model: process.env.MESSAGING_AI_MODEL?.trim() || OPENROUTER_MODEL,
+      isOpenRouter: true,
+    }
+  }
+
+  return {
+    apiKey: openAiKey ?? '',
+    baseURL: process.env.OPENAI_BASE_URL?.trim() || undefined,
+    model: process.env.MESSAGING_AI_MODEL?.trim() || DEFAULT_MODEL,
+    isOpenRouter: false,
+  }
+}
+
+export function getMessagingAiConfigError() {
+  const { apiKey, isOpenRouter } = getAiConfig()
+  if (!apiKey || INVALID_OPENAI_KEYS.has(apiKey)) {
+    return isOpenRouter
+      ? 'OPENROUTER_API_KEY is missing.'
+      : 'OPENAI_API_KEY is missing or still set to a placeholder value.'
+  }
+  return null
+}
 
 function getClient() {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-  return new OpenAI({ apiKey })
+  const { apiKey, baseURL, isOpenRouter } = getAiConfig()
+  if (!apiKey || INVALID_OPENAI_KEYS.has(apiKey)) return null
+
+  const appBaseUrl = process.env.APP_BASE_URL?.trim()
+  return new OpenAI({
+    apiKey,
+    baseURL,
+    defaultHeaders: isOpenRouter
+      ? {
+          'HTTP-Referer': appBaseUrl || 'http://localhost:3000',
+          'X-Title': 'BGOP',
+        }
+      : undefined,
+  })
+}
+
+function getModel() {
+  return getAiConfig().model
 }
 
 function estimateCostUsd(usage?: {
@@ -121,7 +166,7 @@ async function recordAiRun(args: {
     message_id: args.messageId ?? null,
     feature: args.feature,
     status: args.status,
-    model: MODEL,
+    model: getModel(),
     prompt_version: PROMPT_VERSION,
     input_tokens: usage?.input_tokens ?? 0,
     cached_input_tokens: usage?.input_tokens_details?.cached_tokens ?? 0,
@@ -180,11 +225,59 @@ async function jsonResponse<T>(args: {
   maxOutputTokens: number
 }): Promise<T | null> {
   const client = getClient()
-  if (!client) return null
+  if (!client) {
+    console.warn('[messaging-ai] unavailable:', getMessagingAiConfigError())
+    return null
+  }
+
+  const aiConfig = getAiConfig()
 
   try {
+    if (aiConfig.isOpenRouter) {
+      const response = await client.chat.completions.create({
+        model: getModel(),
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: args.instructions },
+          { role: 'user', content: args.input },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: args.schemaName,
+            strict: true,
+            schema: args.schema,
+          },
+        },
+      })
+
+      await recordAiRun({
+        threadId: args.threadId,
+        feature: args.feature,
+        messageId: args.messageId ?? null,
+        status: 'success',
+        usage: {
+          input_tokens: response.usage?.prompt_tokens ?? 0,
+          output_tokens: response.usage?.completion_tokens ?? 0,
+          input_tokens_details: {
+            cached_tokens: response.usage?.prompt_tokens_details?.cached_tokens ?? 0,
+          },
+          output_tokens_details: {
+            reasoning_tokens: response.usage?.completion_tokens_details?.reasoning_tokens ?? 0,
+          },
+        },
+      })
+
+      const content = response.choices[0]?.message?.content
+      if (!content) {
+        throw new Error('OpenRouter returned an empty structured response')
+      }
+
+      return JSON.parse(content) as T
+    }
+
     const response = await client.responses.create({
-      model: MODEL,
+      model: getModel(),
       store: false,
       temperature: 0.2,
       prompt_cache_key: args.promptCacheKey,
@@ -336,51 +429,51 @@ export async function persistMessageLocalization(args: {
 
   const initial: TranslationResult = {
     source_language: sourceLanguage,
-    text_th: sourceLanguage === 'th' ? args.originalText : '',
-    text_en: sourceLanguage === 'en' ? args.originalText : '',
+    text_th: sourceLanguage === 'th' ? args.originalText : null,
+    text_en: sourceLanguage === 'en' ? args.originalText : null,
   }
 
   let localization = args.localization
   if (!localization) {
-    const contextMessages = args.contextMessages ?? []
-    const customerContext =
-      args.customerContext ??
-      (args.threadId
-        ? await fetchThreadContext(args.threadId)
-        : {
-            customer: null,
-            vehicles: [],
-            recentJobs: [],
-            outstandingInvoices: [],
-          })
-    const transcript = renderTranscript(contextMessages.slice(-6))
+    if (sourceLanguage === args.counterpartLanguage) {
+      localization = initial
+    } else {
+      const contextMessages = args.contextMessages ?? []
+      const customerContext =
+        args.customerContext ??
+        (args.threadId
+          ? await fetchThreadContext(args.threadId)
+          : {
+              customer: null,
+              vehicles: [],
+              recentJobs: [],
+              outstandingInvoices: [],
+            })
+      const transcript = renderTranscript(contextMessages.slice(-6))
 
-    const result = await jsonResponse<TranslationResult>({
-      feature: 'translation',
-      threadId: args.threadId ?? null,
-      messageId: args.messageId ?? null,
-      promptCacheKey: `translation:${PROMPT_VERSION}:${sourceLanguage}:${args.counterpartLanguage}`,
-      instructions:
-        'You translate customer service messages between Thai and English. Preserve names, prices, dates, invoice numbers, bike models, registration plates, phone numbers, URLs, and job facts exactly. Return both Thai and English versions of the same message. Do not add commentary.',
-      input: `Business context:\n${buildContextBlock(customerContext)}\n\nRecent transcript:\n${transcript || '(none)'}\n\nCurrent message:\n${args.originalText}`,
-      schemaName: 'message_localization',
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          source_language: { type: 'string', enum: ['th', 'en'] },
-          text_th: { type: 'string' },
-          text_en: { type: 'string' },
+      const result = await jsonResponse<TranslationResult>({
+        feature: 'translation',
+        threadId: args.threadId ?? null,
+        messageId: args.messageId ?? null,
+        promptCacheKey: `translation:${PROMPT_VERSION}:${sourceLanguage}:${args.counterpartLanguage}`,
+        instructions:
+          'You translate customer service messages between Thai and English. Preserve names, prices, dates, invoice numbers, bike models, registration plates, phone numbers, URLs, and job facts exactly. Return both Thai and English versions of the same message. Do not add commentary.',
+        input: `Business context:\n${buildContextBlock(customerContext)}\n\nRecent transcript:\n${transcript || '(none)'}\n\nCurrent message:\n${args.originalText}`,
+        schemaName: 'message_localization',
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            source_language: { type: 'string', enum: ['th', 'en'] },
+            text_th: { type: 'string' },
+            text_en: { type: 'string' },
+          },
+          required: ['source_language', 'text_th', 'text_en'],
         },
-        required: ['source_language', 'text_th', 'text_en'],
-      },
-      maxOutputTokens: 160,
-    })
+        maxOutputTokens: 160,
+      })
 
-    localization = result ?? {
-      ...initial,
-      text_th: initial.text_th || args.originalText,
-      text_en: initial.text_en || args.originalText,
+      localization = result ?? initial
     }
   }
 
@@ -394,8 +487,8 @@ export async function persistMessageLocalization(args: {
     source_language: localization.source_language,
     text_th: localization.text_th,
     text_en: localization.text_en,
-    model: MODEL,
-    prompt_version: PROMPT_VERSION,
+    model: isLocalizationReady(localization) ? getModel() : null,
+    prompt_version: isLocalizationReady(localization) ? PROMPT_VERSION : null,
     translated_at: new Date().toISOString(),
   })
 
@@ -448,7 +541,7 @@ async function summarizeThread(args: {
     summary_json: summary,
     last_summarized_message_id: args.lastMessageId,
     summarized_message_count: args.messages.length,
-    model: MODEL,
+    model: getModel(),
     prompt_version: PROMPT_VERSION,
   })
 
@@ -457,6 +550,7 @@ async function summarizeThread(args: {
 
 export async function hydrateThreadAssist(threadId: string) {
   const supabase = createAdminClient()
+  const unavailableReason = getMessagingAiConfigError()
   const customerContext = await fetchThreadContext(threadId)
   const messages = await fetchMessages(threadId)
 
@@ -465,9 +559,9 @@ export async function hydrateThreadAssist(threadId: string) {
     const message = messages[index]
     if (message.message_type && message.message_type !== 'text') continue
     if (!message.body_text) continue
-    if (message.localization) continue
+    if (isLocalizationReady(message.localization ?? null)) continue
 
-    await persistMessageLocalization({
+    const localization = await persistMessageLocalization({
       threadId,
       messageId: message.id,
       originalText: message.body_text,
@@ -475,7 +569,9 @@ export async function hydrateThreadAssist(threadId: string) {
       customerContext,
       counterpartLanguage: message.direction === 'inbound' ? 'th' : customerContext.customer?.preferred_language ?? 'en',
     })
-    translatedCount += 1
+    if (isLocalizationReady(localization)) {
+      translatedCount += 1
+    }
   }
 
   const { data: aiState } = await supabase
@@ -502,13 +598,21 @@ export async function hydrateThreadAssist(threadId: string) {
   return {
     translatedCount,
     summaryUpdated,
+    unavailableReason,
   }
 }
 
 export async function draftReply(args: {
   threadId: string
   recipientLanguage: Language
+  currentDraftTh?: string
+  revisionRequest?: string
 }) {
+  const configError = getMessagingAiConfigError()
+  if (configError) {
+    throw new Error(configError)
+  }
+
   const supabase = createAdminClient()
   const customerContext = await fetchThreadContext(args.threadId)
   const messages = await fetchMessages(args.threadId)
@@ -523,8 +627,8 @@ export async function draftReply(args: {
     threadId: args.threadId,
     promptCacheKey: `reply:${PROMPT_VERSION}:${args.recipientLanguage}`,
     instructions:
-      'You help a Thai-speaking service advisor reply to a customer. Draft the advisor reply in Thai. Also provide the customer-facing version in the requested recipient language. Keep the message concise, polite, and operationally accurate.',
-    input: `Business context:\n${buildContextBlock(customerContext)}\n\nThread summary JSON:\n${JSON.stringify(aiState?.summary_json ?? {}, null, 2)}\n\nRecent transcript:\n${renderTranscript(messages.slice(-6))}\n\nCustomer preferred language for the outgoing preview: ${args.recipientLanguage}`,
+      'You help a Thai-speaking service advisor reply to a customer. Draft the advisor reply in Thai. Also provide the customer-facing version in the requested recipient language. Keep the message concise, polite, and operationally accurate. If an existing Thai draft or revision request is provided, revise the draft accordingly while staying grounded in the conversation facts.',
+    input: `Business context:\n${buildContextBlock(customerContext)}\n\nThread summary JSON:\n${JSON.stringify(aiState?.summary_json ?? {}, null, 2)}\n\nRecent transcript:\n${renderTranscript(messages.slice(-6))}\n\nCurrent Thai draft:\n${args.currentDraftTh?.trim() || '(none)'}\n\nRequested changes from the PA:\n${args.revisionRequest?.trim() || '(none)'}\n\nCustomer preferred language for the outgoing preview: ${args.recipientLanguage}`,
     schemaName: 'reply_draft',
     schema: {
       type: 'object',

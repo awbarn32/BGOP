@@ -12,6 +12,8 @@ type Params = { params: Promise<{ id: string }> }
 
 const ReplySchema = z.object({
   recipient_language: z.enum(['th', 'en']).default('en'),
+  current_draft_th: z.string().trim().max(4000).optional(),
+  revision_request: z.string().trim().max(2000).optional(),
 })
 
 export async function POST(request: Request, { params }: Params) {
@@ -41,6 +43,8 @@ export async function POST(request: Request, { params }: Params) {
     const data = await draftReply({
       threadId: id,
       recipientLanguage: parsed.data.recipient_language,
+      currentDraftTh: parsed.data.current_draft_th,
+      revisionRequest: parsed.data.revision_request,
     })
 
     if (!data) return serverError('Reply suggestion unavailable')
