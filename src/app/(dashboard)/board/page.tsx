@@ -59,34 +59,48 @@ export default function BoardPage() {
   )
 
   const fetchJobs = useCallback(async () => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
     try {
-      const res = await fetch('/api/jobs')
+      const res = await fetch('/api/jobs', {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
       const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json.error?.message ?? 'Failed to load jobs')
+      }
       setJobs(json.data ?? [])
     } catch {
       toast('Failed to load jobs', 'error')
     } finally {
+      clearTimeout(timeout)
       setLoading(false)
     }
   }, [toast])
 
   useEffect(() => {
-    // Get current user's role for priority controls
-    createClient().auth.getUser().then(({ data }) => {
-      setUserRole(data.user?.app_metadata?.role ?? '')
-    })
+    try {
+      // Get current user's role for priority controls
+      createClient().auth.getUser().then(({ data }) => {
+        setUserRole(data.user?.app_metadata?.role ?? '')
+      }).catch(() => {})
 
-    void fetchJobs().then(() => {
-      const params = new URLSearchParams(window.location.search)
-      const jobParam = params.get('job')
-      if (jobParam) {
-        setSelectedJobId(jobParam)
-        window.history.replaceState({}, '', '/board')
-      }
-    })
+      void fetchJobs().then(() => {
+        const params = new URLSearchParams(window.location.search)
+        const jobParam = params.get('job')
+        if (jobParam) {
+          setSelectedJobId(jobParam)
+          window.history.replaceState({}, '', '/board')
+        }
+      })
+    } catch {
+      setLoading(false)
+    }
 
     // Load mechanics for JobDrawer assignment dropdown
-    fetch('/api/users')
+    fetch('/api/users', { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((j) => {
         if (j?.data) {
@@ -97,23 +111,26 @@ export default function BoardPage() {
       })
       .catch(() => {})
 
-    // Realtime
-    channelRef.current = subscribeToKanbanUpdates(({ eventType, job }) => {
-      if (eventType === 'INSERT') {
-        // Refetch to get joined customer/vehicle data
-        fetchJobs()
-        return
-      }
-      if (eventType === 'UPDATE') {
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === job.id
-              ? { ...j, bucket: job.bucket as Bucket, status: job.status as JobCardType['status'], priority: job.priority, mechanic_id: job.mechanic_id }
-              : j
+    try {
+      // Realtime
+      channelRef.current = subscribeToKanbanUpdates(({ eventType, job }) => {
+        if (eventType === 'INSERT') {
+          void fetchJobs()
+          return
+        }
+        if (eventType === 'UPDATE') {
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === job.id
+                ? { ...j, bucket: job.bucket as Bucket, status: job.status as JobCardType['status'], priority: job.priority, mechanic_id: job.mechanic_id }
+                : j
+            )
           )
-        )
-      }
-    })
+        }
+      })
+    } catch {
+      // Do not block board rendering if realtime subscription fails.
+    }
 
     return () => {
       if (channelRef.current) unsubscribe(channelRef.current)

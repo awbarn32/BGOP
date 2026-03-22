@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSessionUser } from '@/lib/supabase/server'
 import { unauthorizedError, forbiddenError, serverError } from '@/lib/utils/validation'
 
 // GET /api/reports?type=eod&date=YYYY-MM-DD
@@ -8,7 +8,7 @@ import { unauthorizedError, forbiddenError, serverError } from '@/lib/utils/vali
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) return unauthorizedError()
 
   const role = user.app_metadata?.role
