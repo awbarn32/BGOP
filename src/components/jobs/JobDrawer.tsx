@@ -101,6 +101,8 @@ const REVENUE_STREAM_OPTIONS: Array<{ value: RevenueStream; label: string }> = [
   { value: 'commission', label: 'Commission' },
 ]
 
+const EMPTY_MECHANICS: Pick<User, 'id' | 'full_name'>[] = []
+
 interface JobDrawerProps {
   jobId: string | null
   onClose: () => void
@@ -112,7 +114,7 @@ export function JobDrawer({
   jobId,
   onClose,
   onJobUpdated,
-  mechanics = [],
+  mechanics = EMPTY_MECHANICS,
 }: JobDrawerProps) {
   const { toast } = useToast()
   const [job, setJob] = useState<JobDetail | null>(null)
@@ -609,20 +611,20 @@ export function JobDrawer({
   ] : []
 
   return (
-      <div className="flex-1 overflow-y-auto bg-stone-100 text-slate-900">
+      <div className="flex-1 overflow-y-auto bg-gray-950 text-white">
         {loading ? (
           <div className="flex h-full items-center justify-center py-24">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
           </div>
         ) : !job ? (
           <div className="mx-auto flex max-w-3xl items-center justify-center px-6 py-24">
-            <div className="rounded-2xl border border-stone-300 bg-white px-8 py-10 text-center shadow-sm">
-              <p className="text-lg font-semibold text-slate-900">Job detail unavailable</p>
-              <p className="mt-2 text-sm text-slate-500">The selected job could not be loaded.</p>
+            <div className="rounded-2xl border border-gray-700 bg-gray-900 px-8 py-10 text-center shadow-sm">
+              <p className="text-lg font-semibold text-white">Job detail unavailable</p>
+              <p className="mt-2 text-sm text-gray-400">The selected job could not be loaded.</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                className="mt-5 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
               >
                 Back to board
               </button>
@@ -630,26 +632,26 @@ export function JobDrawer({
           </div>
         ) : (
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-stone-200 bg-white px-6 py-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-800 bg-gray-900 px-6 py-5 shadow-sm">
               <div className="flex min-w-0 items-center gap-4">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+                  className="text-sm font-medium text-gray-400 transition-colors hover:text-white"
                 >
                   ← Jobs
                 </button>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
-                    <p className="font-mono text-lg font-semibold text-slate-900">
+                    <p className="font-mono text-lg font-semibold text-white">
                       {currentInvoice?.invoice_number ?? `JOB-${job.id.slice(0, 8).toUpperCase()}`}
                     </p>
                     <StatusBadge status={job.status} />
-                    <span className="text-sm text-slate-400">
+                    <span className="text-sm text-gray-500">
                       {job.customer.preferred_language === 'th' ? 'Thai speaker' : 'English speaker'}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-gray-400">
                     {job.logistics_type === 'pickup' ? 'Pickup job' : 'Drop-off job'} • Created{' '}
                     {new Date(job.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
@@ -662,7 +664,7 @@ export function JobDrawer({
                     type="button"
                     onClick={() => { void transition(job.bucket, 'rejected') }}
                     disabled={saving}
-                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
+                    className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-300 transition-colors hover:bg-rose-500/20 disabled:opacity-50"
                   >
                     Reject
                   </button>
@@ -670,7 +672,7 @@ export function JobDrawer({
                 <button
                   type="button"
                   onClick={() => scrollToSection('job-contact')}
-                  className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-stone-400 hover:bg-stone-50"
+                  className="rounded-xl border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-800"
                 >
                   Contact customer
                 </button>
@@ -686,39 +688,39 @@ export function JobDrawer({
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_360px]">
               <div className="space-y-6">
-                <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+                <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/15 text-sm font-semibold text-indigo-300">
                       {customerInitials}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <h2 className="text-2xl font-semibold text-slate-900">{job.customer.full_name}</h2>
-                          <p className="text-sm text-slate-400">
+                          <h2 className="text-2xl font-semibold text-white">{job.customer.full_name}</h2>
+                          <p className="text-sm text-gray-500">
                             {job.customer.preferred_language === 'th' ? 'Thai speaker' : 'English speaker'}
                           </p>
                         </div>
                         {job.revenue_stream && <RevenueStreamBadge stream={job.revenue_stream} />}
                       </div>
 
-                      <dl className="mt-5 divide-y divide-stone-200 text-sm">
+                      <dl className="mt-5 divide-y divide-gray-800 text-sm">
                         <div className="flex items-center justify-between gap-4 py-2">
-                          <dt className="text-slate-400">Phone</dt>
-                          <dd className="text-right font-medium text-slate-700">{job.customer.phone ?? '—'}</dd>
+                          <dt className="text-gray-500">Phone</dt>
+                          <dd className="text-right font-medium text-gray-200">{job.customer.phone ?? '—'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-4 py-2">
-                          <dt className="text-slate-400">LINE</dt>
-                          <dd className="text-right font-medium text-slate-700">{job.customer.line_id ?? '—'}</dd>
+                          <dt className="text-gray-500">LINE</dt>
+                          <dd className="text-right font-medium text-gray-200">{job.customer.line_id ?? '—'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-4 py-2">
-                          <dt className="text-slate-400">Email</dt>
-                          <dd className="text-right font-medium text-slate-700">{job.customer.email ?? '—'}</dd>
+                          <dt className="text-gray-500">Email</dt>
+                          <dd className="text-right font-medium text-gray-200">{job.customer.email ?? '—'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-4 py-2">
-                          <dt className="text-slate-400">Customer record</dt>
+                          <dt className="text-gray-500">Customer record</dt>
                           <dd className="text-right">
-                            <Link href={`/customers/${job.customer.id}`} className="font-medium text-teal-600 hover:text-teal-500">
+                            <Link href={`/customers/${job.customer.id}`} className="font-medium text-teal-300 hover:text-teal-200">
                               Open customer
                             </Link>
                           </dd>
@@ -726,7 +728,7 @@ export function JobDrawer({
                       </dl>
 
                       <div className="mt-4">
-                        <Link href="/messages" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                        <Link href="/messages" className="text-sm font-medium text-indigo-300 hover:text-indigo-200">
                           View LINE message history
                         </Link>
                       </div>
@@ -734,71 +736,71 @@ export function JobDrawer({
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Vehicle</p>
+                <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Vehicle</p>
                   {job.vehicle.last_service_date == null && (
-                    <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                    <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-300">
                       No previous service date recorded. Review and confirm vehicle details below.
                     </div>
                   )}
-                  <dl className="mt-4 divide-y divide-stone-200 text-sm">
+                  <dl className="mt-4 divide-y divide-gray-800 text-sm">
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Make / Model</dt>
-                      <dd className="text-right font-medium text-slate-700">
+                      <dt className="text-gray-500">Make / Model</dt>
+                      <dd className="text-right font-medium text-gray-200">
                         {MAKE_LABELS[job.vehicle.make] ?? job.vehicle.make} {job.vehicle.model}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Year</dt>
-                      <dd className="text-right font-medium text-slate-700">{job.vehicle.year}</dd>
+                      <dt className="text-gray-500">Year</dt>
+                      <dd className="text-right font-medium text-gray-200">{job.vehicle.year}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Color</dt>
-                      <dd className="text-right font-medium text-slate-700">{job.vehicle.color ?? '—'}</dd>
+                      <dt className="text-gray-500">Color</dt>
+                      <dd className="text-right font-medium text-gray-200">{job.vehicle.color ?? '—'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Last service</dt>
-                      <dd className="text-right font-medium text-slate-700">
+                      <dt className="text-gray-500">Last service</dt>
+                      <dd className="text-right font-medium text-gray-200">
                         {job.vehicle.last_service_date
                           ? new Date(job.vehicle.last_service_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                           : 'No history'}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Odometer (km)</dt>
-                      <dd className="text-right font-medium text-slate-700">
+                      <dt className="text-gray-500">Odometer (km)</dt>
+                      <dd className="text-right font-medium text-gray-200">
                         {job.vehicle.current_mileage != null ? `${job.vehicle.current_mileage.toLocaleString()} km` : '—'}
                       </dd>
                     </div>
                   </dl>
                 </section>
 
-                <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Service request</p>
-                  <dl className="mt-4 divide-y divide-stone-200 text-sm">
+                <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Service request</p>
+                  <dl className="mt-4 divide-y divide-gray-800 text-sm">
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Logistics</dt>
-                      <dd className="text-right font-medium text-slate-700">
+                      <dt className="text-gray-500">Logistics</dt>
+                      <dd className="text-right font-medium text-gray-200">
                         {job.logistics_type === 'pickup' ? 'Pickup' : 'Drop-off'}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-2.5">
-                      <dt className="text-slate-400">Mechanic notes</dt>
-                      <dd className="text-right font-medium text-slate-700">{job.mechanic_notes ?? '—'}</dd>
+                      <dt className="text-gray-500">Mechanic notes</dt>
+                      <dd className="text-right font-medium text-gray-200">{job.mechanic_notes ?? '—'}</dd>
                     </div>
                   </dl>
-                  <div className="mt-4 rounded-2xl bg-stone-100 px-4 py-4 text-sm italic leading-6 text-slate-600">
+                  <div className="mt-4 rounded-2xl bg-gray-950 px-4 py-4 text-sm italic leading-6 text-gray-300">
                     {job.description.includes(' / ')
                       ? job.description.split(' / ')[1] ?? job.description.split(' / ')[0]
                       : job.description}
                   </div>
                 </section>
 
-                <section id="job-quote" className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+                <section id="job-quote" className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Quote line items</p>
-                      <p className="mt-1 text-sm text-slate-400">
+                      <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Quote line items</p>
+                      <p className="mt-1 text-sm text-gray-500">
                         {currentInvoice?.invoice_number ?? 'Draft quote'}
                         {currentInvoice ? ` (${currentInvoice.status})` : ''}
                       </p>
@@ -808,7 +810,7 @@ export function JobDrawer({
                         <button
                           type="button"
                           onClick={() => setAddingItem(true)}
-                          className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-stone-400 hover:bg-stone-50"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-800"
                         >
                           + Add from catalog / ad-hoc item
                         </button>
@@ -817,26 +819,26 @@ export function JobDrawer({
                   </div>
 
                   {addingItem && (
-                    <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                    <div className="mt-4 rounded-2xl border border-gray-800 bg-gray-800 p-4">
                       <div className="relative">
                         <input
                           type="text"
                           placeholder="Search product catalog…"
                           value={productSearch}
                           onChange={(e) => handleProductSearchChange(e.target.value)}
-                          className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                          className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-emerald-500 focus:outline-none"
                         />
                         {productResults.length > 0 && (
-                          <div className="absolute z-10 mt-2 max-h-44 w-full overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-lg">
+                          <div className="absolute z-10 mt-2 max-h-44 w-full overflow-y-auto rounded-xl border border-gray-800 bg-gray-900 shadow-lg">
                             {productResults.map((p) => (
                               <button
                                 key={p.id}
                                 type="button"
                                 onClick={() => selectProduct(p)}
-                                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-stone-50"
+                                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-800"
                               >
-                                <span className="text-slate-700">{p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name}</span>
-                                <span className="text-slate-400">฿{p.sale_price.toLocaleString()}</span>
+                                <span className="text-gray-200">{p.name.includes(' / ') ? p.name.split(' / ')[1] : p.name}</span>
+                                <span className="text-gray-500">฿{p.sale_price.toLocaleString()}</span>
                               </button>
                             ))}
                           </div>
@@ -847,7 +849,7 @@ export function JobDrawer({
                         <select
                           value={itemType}
                           onChange={(e) => setItemType(e.target.value as 'labour' | 'part')}
-                          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
                         >
                           <option value="labour">Labour</option>
                           <option value="part">Part</option>
@@ -857,7 +859,7 @@ export function JobDrawer({
                           placeholder="Description"
                           value={itemDesc}
                           onChange={(e) => setItemDesc(e.target.value)}
-                          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-emerald-500 focus:outline-none"
                         />
                       </div>
 
@@ -869,7 +871,7 @@ export function JobDrawer({
                           value={itemQty}
                           onChange={(e) => setItemQty(e.target.value)}
                           placeholder="Qty"
-                          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
                         />
                         <input
                           type="number"
@@ -877,7 +879,7 @@ export function JobDrawer({
                           value={itemCostPrice}
                           onChange={(e) => setItemCostPrice(e.target.value)}
                           placeholder="Cost"
-                          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
                         />
                         <input
                           type="number"
@@ -885,7 +887,7 @@ export function JobDrawer({
                           value={itemSalePrice}
                           onChange={(e) => setItemSalePrice(e.target.value)}
                           placeholder="Price"
-                          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
                         />
                       </div>
 
@@ -900,7 +902,7 @@ export function JobDrawer({
                             setProductSearch('')
                             setProductResults([])
                           }}
-                          className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-stone-50"
+                          className="rounded-xl border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-800"
                         >
                           Cancel
                         </button>
@@ -916,9 +918,9 @@ export function JobDrawer({
                     </div>
                   )}
 
-                  <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200">
-                    <table className="min-w-full divide-y divide-stone-200 text-sm">
-                      <thead className="bg-stone-50 text-left text-slate-400">
+                  <div className="mt-5 overflow-hidden rounded-2xl border border-gray-800">
+                    <table className="min-w-full divide-y divide-gray-800 text-sm">
+                      <thead className="bg-gray-800 text-left text-gray-500">
                         <tr>
                           <th className="px-4 py-3 font-medium">Item</th>
                           <th className="px-4 py-3 font-medium">Qty</th>
@@ -926,44 +928,44 @@ export function JobDrawer({
                           <th className="px-4 py-3 font-medium text-right">Price</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-200 bg-white">
+                      <tbody className="divide-y divide-gray-800 bg-gray-900">
                         {job.line_items.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
+                            <td colSpan={4} className="px-4 py-10 text-center text-gray-500">
                               No quote items yet.
                             </td>
                           </tr>
                         ) : (
                           job.line_items.map((li) => (
                             <tr key={li.id}>
-                              <td className="px-4 py-3 text-slate-700">
+                              <td className="px-4 py-3 text-gray-200">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">
                                     {li.description.includes(' / ') ? li.description.split(' / ')[1] : li.description}
                                   </span>
                                   {li.is_scope_change && (
-                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">
                                       Scope
                                     </span>
                                   )}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-slate-500">{li.quantity}</td>
-                              <td className="px-4 py-3 text-slate-500">
+                              <td className="px-4 py-3 text-gray-400">{li.quantity}</td>
+                              <td className="px-4 py-3 text-gray-400">
                                 {li.cost_price != null ? li.cost_price.toLocaleString() : '—'}
                               </td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-800">
+                              <td className="px-4 py-3 text-right font-medium text-gray-100">
                                 ฿{(li.sale_price * li.quantity).toLocaleString()}
                               </td>
                             </tr>
                           ))
                         )}
                       </tbody>
-                      <tfoot className="bg-white">
-                        <tr className="border-t-2 border-slate-400">
-                          <td className="px-4 py-3 text-base font-semibold text-slate-900">Total</td>
+                      <tfoot className="bg-gray-900">
+                        <tr className="border-t-2 border-gray-700">
+                          <td className="px-4 py-3 text-base font-semibold text-white">Total</td>
                           <td colSpan={2} />
-                          <td className="px-4 py-3 text-right text-base font-semibold text-slate-900">
+                          <td className="px-4 py-3 text-right text-base font-semibold text-white">
                             ฿{lineItemsTotal.toLocaleString()}
                           </td>
                         </tr>
@@ -972,25 +974,25 @@ export function JobDrawer({
                   </div>
                 </section>
 
-                <section id="job-contact" className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+                <section id="job-contact" className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Send quote</p>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Send quote</p>
                     {currentInvoice && (
                       <a
                         href={`/api/invoices/${currentInvoice.id}/pdf`}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-stone-400 hover:bg-stone-50"
+                        className="rounded-xl border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-800"
                       >
                         PDF
                       </a>
                     )}
                   </div>
-                  <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-400">
+                  <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-500">
                     Note to customer (sent with quote)
                   </p>
                   <textarea
-                    className="mt-2 min-h-[110px] w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                    className="mt-2 min-h-[110px] w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white placeholder:text-gray-500 focus:border-emerald-500 focus:outline-none"
                     value={msgText}
                     onChange={(e) => { setMsgText(e.target.value); setMsgResult(null) }}
                     placeholder="Add a note for the customer before sending the quote link."
@@ -1013,7 +1015,7 @@ export function JobDrawer({
                       type="button"
                       onClick={handleSendMessage}
                       disabled={sendingMsg || !msgText.trim()}
-                      className="rounded-2xl border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:border-stone-400 hover:bg-stone-50 disabled:opacity-50"
+                      className="rounded-2xl border border-gray-700 bg-gray-900 px-5 py-3 text-sm font-medium text-gray-200 transition-colors hover:border-gray-600 hover:bg-gray-800 disabled:opacity-50"
                     >
                       {sendingMsg ? 'Sending…' : 'Send note only'}
                     </button>
@@ -1022,21 +1024,21 @@ export function JobDrawer({
               </div>
 
               <div className="space-y-6">
-                <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Status</p>
-                  <div className="mt-4 rounded-2xl bg-stone-50 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Bucket</p>
-                    <p className="mt-2 text-base font-semibold text-slate-800">{BUCKET_LABELS[job.bucket]}</p>
+                <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Status</p>
+                  <div className="mt-4 rounded-2xl bg-gray-800 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Bucket</p>
+                    <p className="mt-2 text-base font-semibold text-gray-100">{BUCKET_LABELS[job.bucket]}</p>
                   </div>
                   <div className="mt-4">
-                    <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                    <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
                       Status
                     </label>
                     <select
                       value={job.status}
                       onChange={(e) => { void handleStatusChange(e.target.value as JobStatus) }}
                       disabled={saving}
-                      className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                      className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none"
                     >
                       {validStatuses.map((status) => (
                         <option key={status} value={status}>
@@ -1047,17 +1049,17 @@ export function JobDrawer({
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Assignment</p>
+                <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Assignment</p>
                   <div className="mt-4 space-y-4">
                     <div>
-                      <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                      <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
                         Revenue stream
                       </label>
                       <select
                         value={job.revenue_stream ?? ''}
                         onChange={(e) => { void handleRevenueStreamChange(e.target.value) }}
-                        className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                        className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none"
                       >
                         {REVENUE_STREAM_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>{option.label}</option>
@@ -1065,25 +1067,25 @@ export function JobDrawer({
                       </select>
                     </div>
 
-                    <label className="flex items-start gap-3 rounded-2xl bg-stone-50 px-4 py-3 text-sm text-slate-600">
+                    <label className="flex items-start gap-3 rounded-2xl bg-gray-800 px-4 py-3 text-sm text-gray-300">
                       <input
                         type="checkbox"
                         checked={job.logistics_type === 'pickup'}
                         readOnly
-                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-emerald-600"
+                        className="mt-0.5 h-4 w-4 rounded border-gray-700 text-emerald-600"
                       />
                       <span>Tag transport revenue stream automatically for pickup jobs.</span>
                     </label>
 
                     <div>
-                      <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                      <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
                         Mechanic
                       </label>
                       <select
                         value={mechanicEdit}
                         onChange={(e) => { void handleMechanicChange(e.target.value) }}
                         disabled={saving}
-                        className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                        className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none"
                       >
                         <option value="">Not assigned</option>
                         {mechanicOptions.map((m) => (
@@ -1093,9 +1095,9 @@ export function JobDrawer({
                     </div>
 
                     {currentInvoice && (
-                      <div className="rounded-2xl bg-stone-50 p-4">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Deposit</p>
-                        <p className="mt-2 text-sm text-slate-700">
+                      <div className="rounded-2xl bg-gray-800 p-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Deposit</p>
+                        <p className="mt-2 text-sm text-gray-200">
                           {currentInvoice.deposit_amount
                             ? `Paid: ฿${currentInvoice.deposit_amount.toLocaleString()}`
                             : 'No deposit recorded'}
@@ -1116,12 +1118,12 @@ export function JobDrawer({
                               placeholder="Amount"
                               value={depositAmount}
                               onChange={(e) => setDepositAmount(e.target.value)}
-                              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none"
+                              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
                             />
                             <select
                               value={depositMethod}
                               onChange={(e) => setDepositMethod(e.target.value as typeof depositMethod)}
-                              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none"
+                              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
                             >
                               <option value="bank_transfer">Bank Transfer</option>
                               <option value="promptpay">PromptPay</option>
@@ -1132,7 +1134,7 @@ export function JobDrawer({
                               <button
                                 type="button"
                                 onClick={() => { setRecordingDeposit(false); setDepositAmount('') }}
-                                className="flex-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-stone-50"
+                                className="flex-1 rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-800"
                               >
                                 Cancel
                               </button>
@@ -1152,19 +1154,19 @@ export function JobDrawer({
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Timeline</p>
+                <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Timeline</p>
                   <div className="mt-4 space-y-4">
                     {timelineEntries.map((entry, index) => (
                       <div key={entry.id} className="flex gap-3">
                         <div className="flex flex-col items-center">
-                          <span className={`mt-1 h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-emerald-500' : 'bg-stone-300'}`} />
-                          {index < timelineEntries.length - 1 && <span className="mt-1 h-full w-px bg-stone-200" />}
+                          <span className={`mt-1 h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-emerald-500' : 'bg-gray-700'}`} />
+                          {index < timelineEntries.length - 1 && <span className="mt-1 h-full w-px bg-gray-800" />}
                         </div>
                         <div className="pb-4">
-                          <p className="text-sm font-medium text-slate-800">{entry.label}</p>
-                          <p className="mt-1 text-xs text-slate-500">{entry.detail}</p>
-                          <p className="mt-1 text-xs text-slate-400">
+                          <p className="text-sm font-medium text-gray-100">{entry.label}</p>
+                          <p className="mt-1 text-xs text-gray-400">{entry.detail}</p>
+                          <p className="mt-1 text-xs text-gray-500">
                             {new Date(entry.changedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                             {' '}
                             {new Date(entry.changedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
@@ -1176,24 +1178,24 @@ export function JobDrawer({
                 </section>
 
                 {(job.scope_changes.length > 0 || workOrders.length > 0) && (
-                  <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Operations</p>
+                  <section className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Operations</p>
                     <div className="mt-4 space-y-4">
                       {job.scope_changes.map((sc) => (
-                        <div key={sc.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                        <div key={sc.id} className="rounded-2xl border border-gray-800 bg-gray-800 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-sm font-medium text-slate-800">{sc.description}</p>
-                              {sc.mechanic_notes && <p className="mt-1 text-xs text-slate-500">{sc.mechanic_notes}</p>}
+                              <p className="text-sm font-medium text-gray-100">{sc.description}</p>
+                              {sc.mechanic_notes && <p className="mt-1 text-xs text-gray-400">{sc.mechanic_notes}</p>}
                             </div>
-                            <span className="text-sm font-semibold text-slate-800">฿{sc.amount_thb.toLocaleString()}</span>
+                            <span className="text-sm font-semibold text-gray-100">฿{sc.amount_thb.toLocaleString()}</span>
                           </div>
                           {sc.status === 'flagged' && (
                             <div className="mt-3 flex gap-2">
                               <button
                                 type="button"
                                 onClick={() => handleScopeAction(sc.id, 'decline')}
-                                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100"
+                                className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
                               >
                                 Decline
                               </button>
@@ -1210,15 +1212,15 @@ export function JobDrawer({
                       ))}
 
                       {workOrders.map((wo) => (
-                        <div key={wo.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-                          <p className="text-sm font-medium text-slate-800">
+                        <div key={wo.id} className="rounded-2xl border border-gray-800 bg-gray-800 p-4">
+                          <p className="text-sm font-medium text-gray-100">
                             {wo.order_type === 'pickup' ? 'Pickup order' : 'Delivery order'}
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-gray-400">
                             {(drivers.find((driver) => driver.id === wo.driver_id)?.full_name ?? 'Unassigned driver')}
                           </p>
                           {(wo.pickup_address || wo.delivery_address) && (
-                            <p className="mt-1 text-xs text-slate-400">{wo.pickup_address ?? wo.delivery_address}</p>
+                            <p className="mt-1 text-xs text-gray-500">{wo.pickup_address ?? wo.delivery_address}</p>
                           )}
                         </div>
                       ))}

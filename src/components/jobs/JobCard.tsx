@@ -1,5 +1,3 @@
-'use client'
-
 import Image from 'next/image'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -20,7 +18,6 @@ const LOGISTICS_LABEL: Record<string, string> = {
 
 interface JobCardProps {
   job: JobCardType
-  onClick: (job: JobCardType) => void
   isDragOverlay?: boolean
   position?: number
   canReorder?: boolean
@@ -32,7 +29,6 @@ interface JobCardProps {
 
 export function JobCard({
   job,
-  onClick,
   isDragOverlay = false,
   position,
   canReorder,
@@ -71,11 +67,8 @@ export function JobCard({
       style={isDragOverlay ? undefined : style}
       {...(isDragOverlay ? {} : listeners)}
       {...(isDragOverlay ? {} : attributes)}
-      onClick={() => {
-        if (!isDragOverlay) onClick(job)
-      }}
       className={`
-        rounded-xl overflow-hidden select-none cursor-pointer
+        rounded-xl overflow-hidden select-none cursor-grab active:cursor-grabbing
         border transition-all duration-150
         ${isDragging && !isDragOverlay
           ? 'opacity-40 border-dashed border-gray-600'
@@ -172,17 +165,14 @@ export function JobCard({
 
       {!isDragOverlay && (
         <div className="border-t border-gray-700/50 px-2.5 pb-2 pt-2 space-y-2">
-          <button
-            type="button"
+          <a
+            href={`/jobs/${job.id}`}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation()
-              onClick(job)
-            }}
-            className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-emerald-500"
+            onClick={(e) => e.stopPropagation()}
+            className="block w-full rounded-lg bg-emerald-600 px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-emerald-500"
           >
             See More Details
-          </button>
+          </a>
 
           {/* Priority reorder (owner/PA only) */}
           {canReorder && (

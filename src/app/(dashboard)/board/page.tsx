@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -36,7 +35,6 @@ const REVENUE_STREAMS = [
 ]
 
 export default function BoardPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [jobs, setJobs] = useState<JobCardType[]>([])
   const [loading, setLoading] = useState(true)
@@ -394,6 +392,7 @@ export default function BoardPage() {
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
+          onDragCancel={() => setActiveJob(null)}
           onDragEnd={handleDragEnd}
         >
           {/* Horizontally scrollable board */}
@@ -404,7 +403,6 @@ export default function BoardPage() {
                   <KanbanColumn
                     bucket={bucket}
                     jobs={jobsByBucket[bucket]}
-                    onCardClick={(job) => router.push(`/jobs/${job.id}`)}
                     canReorder={canReorder}
                     onPriorityChange={handlePriorityChange}
                   />
@@ -416,7 +414,7 @@ export default function BoardPage() {
           <DragOverlay dropAnimation={null}>
             {activeJob ? (
               <div className="w-[280px]">
-                <JobCard job={activeJob} onClick={() => {}} isDragOverlay />
+                <JobCard job={activeJob} isDragOverlay />
               </div>
             ) : null}
           </DragOverlay>
