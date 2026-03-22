@@ -11,6 +11,7 @@ import {
 const CARD_SELECT = `
   id, bucket, status, priority, description,
   revenue_stream, logistics_type, mechanic_id,
+  intake_photos,
   owner_notify_threshold_thb, created_at, updated_at,
   customer:customers(id, full_name, phone, line_id),
   vehicle:vehicles(id, make, model, year, license_plate),

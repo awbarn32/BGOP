@@ -104,6 +104,7 @@ export async function POST(request: Request) {
     text,
     senderLanguage: sender_language,
     recipientLanguage: recipient_language,
+    sentByUserId: user.id,
   })
 
   if (!result.ok) return serverError(result.error ?? 'Failed to send message')

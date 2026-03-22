@@ -76,7 +76,14 @@ export default function BoardPage() {
       setUserRole(data.user?.app_metadata?.role ?? '')
     })
 
-    fetchJobs()
+    void fetchJobs().then(() => {
+      const params = new URLSearchParams(window.location.search)
+      const jobParam = params.get('job')
+      if (jobParam) {
+        setSelectedJobId(jobParam)
+        window.history.replaceState({}, '', '/board')
+      }
+    })
 
     // Load mechanics for JobDrawer assignment dropdown
     fetch('/api/users')
@@ -377,7 +384,7 @@ export default function BoardPage() {
           <div className="flex-1 overflow-x-auto overflow-y-hidden">
             <div className="flex gap-3 h-full p-4" style={{ minWidth: 'max-content' }}>
               {BUCKET_ORDER.map((bucket) => (
-                <div key={bucket} className="flex flex-col h-full w-[248px] flex-shrink-0">
+                <div key={bucket} className="flex flex-col h-full w-[280px] flex-shrink-0">
                   <KanbanColumn
                     bucket={bucket}
                     jobs={jobsByBucket[bucket]}
@@ -392,7 +399,7 @@ export default function BoardPage() {
 
           <DragOverlay dropAnimation={null}>
             {activeJob ? (
-              <div className="w-[248px]">
+              <div className="w-[280px]">
                 <JobCard job={activeJob} onClick={() => {}} isDragOverlay />
               </div>
             ) : null}
