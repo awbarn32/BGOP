@@ -31,13 +31,16 @@ interface JobDetail extends JobCard {
     sku: string | null
     quantity: number
     sale_price: number
+    cost_price?: number | null
     is_scope_change: boolean
+    mechanic_completed: boolean
   }[]
   status_history: {
     id: string
     from_status: string | null
     to_status: string
     changed_at: string
+    notes?: string | null
   }[]
   scope_changes: {
     id: string
@@ -54,6 +57,8 @@ interface JobDetail extends JobCard {
     total_amount: number
     deposit_amount: number | null
     paid_amount: number | null
+    submitted_for_approval_at: string | null
+    owner_decline_reason: string | null
   }[] | null
 }
 
@@ -387,7 +392,7 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
     } catch { toast('Network error', 'error') }
   }
 
-  async function handleSendQuote() {
+  async function _handleSendQuote() {
     if (!job) return
     if (!confirm('Mark quote as sent and update job status to Quote Sent?')) return
     await patch({ status: 'quote_sent' as JobStatus })

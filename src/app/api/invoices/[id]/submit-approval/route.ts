@@ -72,7 +72,7 @@ export async function POST(
 
   // Notify Owner via LINE (non-blocking — if it fails, submission still succeeds)
   try {
-    const job = invoice.job as { customer: { full_name: string }; vehicle: { make: string; model: string; year: number } } | null
+    const job = invoice.job as unknown as { customer: { full_name: string }; vehicle: { make: string; model: string; year: number } } | null
     if (job) {
       const { data: owners } = await admin
         .from('users')

@@ -86,14 +86,14 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   // action === 'send'
-  const customer = reminder.customer as {
+  const customer = reminder.customer as unknown as {
     id: string
     full_name: string
     line_id: string | null
     preferred_language: string | null
   } | null
 
-  const vehicle = reminder.vehicle as {
+  const vehicle = reminder.vehicle as unknown as {
     make: string
     model: string
     year: number

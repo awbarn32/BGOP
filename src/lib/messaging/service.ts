@@ -163,7 +163,11 @@ export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
 
   // ── 3. Send ─────────────────────────────────────────────────────────────────
   const messageContent = opts.messages
-    .map((m) => (m.type === 'text' ? m.text : `[Flex: ${m.altText}]`))
+    .map((m) => {
+      if (m.type === 'text') return m.text
+      if (m.type === 'image') return '[Photo]'
+      return `[Flex: ${m.altText}]`
+    })
     .join(' | ')
 
   const result = await pushMessage(customer.line_id, opts.messages)

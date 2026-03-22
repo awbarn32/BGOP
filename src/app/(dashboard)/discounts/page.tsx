@@ -112,7 +112,7 @@ export default function DiscountsPage() {
 
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [saving, setSaving] = useState(false)
-  const [previewMessageOpen, setPreviewMessageOpen] = useState(false)
+  const [_previewMessageOpen, _setPreviewMessageOpen] = useState(false)
 
   // Fetch user role from Supabase auth
   useEffect(() => {

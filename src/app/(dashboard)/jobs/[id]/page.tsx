@@ -1094,7 +1094,7 @@ export default function JobDetailPage() {
                     </span>
                   </p>
                 ) : (
-                  <p className="text-xs text-amber-600">⚠️ No LINE ID — customer won't receive the quote automatically</p>
+                  <p className="text-xs text-amber-600">⚠️ No LINE ID — customer won&apos;t receive the quote automatically</p>
                 )}
               </div>
             )}

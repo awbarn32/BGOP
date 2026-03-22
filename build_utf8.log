@@ -1,0 +1,90 @@
+﻿
+> bgop@0.1.0 build
+> next build
+
+  Γû▓ Next.js 14.2.35
+  - Environments: .env.local
+
+node.exe : 
+At line:1 char:1
++ & "C:\Program Files
+\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (:String   
+ ) [], RemoteExce    
+ption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+> Build error 
+occurred
+Error: EINVAL: 
+invalid argument, 
+readlink 'C:\Users\aw
+bar\OneDrive\Antigrav
+ity 
+Workspaces\Garage Bui
+ld\bgop\.next\trace'
+    at async 
+Object.readlink (node
+:internal/fs/promises
+:971:10)
+    at async C:\Users
+\awbar\OneDrive\Antig
+ravity 
+Workspaces\Garage Bui
+ld\bgop\node_modules\
+next\dist\lib\recursi
+ve-delete.js:58:30
+    at async 
+Promise.all (index 3)
+    at async 
+recursiveDelete (C:\U
+sers\awbar\OneDrive\A
+ntigravity 
+Workspaces\Garage Bui
+ld\bgop\node_modules\
+next\dist\lib\recursi
+ve-delete.js:51:5)
+    at async C:\Users
+\awbar\OneDrive\Antig
+ravity 
+Workspaces\Garage Bui
+ld\bgop\node_modules\
+next\dist\build\index
+.js:694:17
+    at async 
+Span.traceAsyncFn (C:
+\Users\awbar\OneDrive
+\Antigravity 
+Workspaces\Garage Bui
+ld\bgop\node_modules\
+next\dist\trace\trace
+.js:154:20)
+    at async build (C
+:\Users\awbar\OneDriv
+e\Antigravity 
+Workspaces\Garage Bui
+ld\bgop\node_modules\
+next\dist\build\index
+.js:368:9) {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 
+'readlink',
+  path: 'C:\\Users\\a
+wbar\\OneDrive\\Antig
+ravity 
+Workspaces\\Garage Bu
+ild\\bgop\\.next\\tra
+ce'
+}
