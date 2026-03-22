@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +18,6 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { KanbanColumn } from '@/components/jobs/KanbanColumn'
 import { JobCard } from '@/components/jobs/JobCard'
-import { JobDrawer } from '@/components/jobs/JobDrawer'
 import { NewJobForm } from '@/components/jobs/NewJobForm'
 import { useToast } from '@/components/ui/Toast'
 import { subscribeToKanbanUpdates, unsubscribe } from '@/lib/supabase/realtime'
@@ -36,6 +36,7 @@ const REVENUE_STREAMS = [
 ]
 
 export default function BoardPage() {
+  const router = useRouter()
   const { toast } = useToast()
   const [jobs, setJobs] = useState<JobCardType[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +44,6 @@ export default function BoardPage() {
 
   const [activeJob, setActiveJob] = useState<JobCardType | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
 
   // Board toolbar filters
@@ -87,19 +87,12 @@ export default function BoardPage() {
         setUserRole(data.user?.app_metadata?.role ?? '')
       }).catch(() => {})
 
-      void fetchJobs().then(() => {
-        const params = new URLSearchParams(window.location.search)
-        const jobParam = params.get('job')
-        if (jobParam) {
-          setSelectedJobId(jobParam)
-          window.history.replaceState({}, '', '/board')
-        }
-      })
+      void fetchJobs()
     } catch {
       setLoading(false)
     }
 
-    // Load mechanics for JobDrawer assignment dropdown
+    // Load mechanics for board filtering
     fetch('/api/users', { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((j) => {
@@ -411,7 +404,7 @@ export default function BoardPage() {
                   <KanbanColumn
                     bucket={bucket}
                     jobs={jobsByBucket[bucket]}
-                    onCardClick={(job) => setSelectedJobId(job.id)}
+                    onCardClick={(job) => router.push(`/jobs/${job.id}`)}
                     canReorder={canReorder}
                     onPriorityChange={handlePriorityChange}
                   />
@@ -433,13 +426,6 @@ export default function BoardPage() {
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Job" size="lg">
         <NewJobForm onSuccess={handleJobCreated} onCancel={() => setCreateOpen(false)} />
       </Modal>
-
-      <JobDrawer
-        jobId={selectedJobId}
-        onClose={() => setSelectedJobId(null)}
-        onJobUpdated={handleJobUpdated}
-        mechanics={mechanics}
-      />
     </div>
   )
 }

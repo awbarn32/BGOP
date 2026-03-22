@@ -71,9 +71,11 @@ export function JobCard({
       style={isDragOverlay ? undefined : style}
       {...(isDragOverlay ? {} : listeners)}
       {...(isDragOverlay ? {} : attributes)}
-      onClick={() => onClick(job)}
+      onClick={() => {
+        if (!isDragOverlay) onClick(job)
+      }}
       className={`
-        rounded-xl overflow-hidden cursor-pointer select-none
+        rounded-xl overflow-hidden select-none cursor-pointer
         border transition-all duration-150
         ${isDragging && !isDragOverlay
           ? 'opacity-40 border-dashed border-gray-600'
@@ -168,21 +170,37 @@ export function JobCard({
         )}
       </div>
 
-      {/* ── Priority reorder (owner/PA only) ── */}
-      {canReorder && !isDragOverlay && (
-        <div className="flex gap-1 px-2.5 pb-2 pt-1 border-t border-gray-700/50">
+      {!isDragOverlay && (
+        <div className="border-t border-gray-700/50 px-2.5 pb-2 pt-2 space-y-2">
           <button
-            onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
-            disabled={isFirst}
-            className="flex-1 text-xs py-0.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-            title="Move up (higher priority)"
-          >↑</button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
-            disabled={isLast}
-            className="flex-1 text-xs py-0.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-            title="Move down (lower priority)"
-          >↓</button>
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick(job)
+            }}
+            className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-emerald-500"
+          >
+            See More Details
+          </button>
+
+          {/* Priority reorder (owner/PA only) */}
+          {canReorder && (
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
+                disabled={isFirst}
+                className="flex-1 rounded bg-gray-900 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-20"
+                title="Move up (higher priority)"
+              >↑</button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
+                disabled={isLast}
+                className="flex-1 rounded bg-gray-900 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-20"
+                title="Move down (lower priority)"
+              >↓</button>
+            </div>
+          )}
         </div>
       )}
     </div>

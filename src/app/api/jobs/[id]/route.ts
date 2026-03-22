@@ -14,11 +14,11 @@ type Params = { params: Promise<{ id: string }> }
 const DETAIL_SELECT = `
   id, bucket, status, priority, description, mechanic_notes,
   revenue_stream, logistics_type, mechanic_id,
-  pickup_address, intake_mileage, completion_mileage, intake_photos,
+  intake_mileage, completion_mileage, intake_photos,
   owner_notify_threshold_thb,
   created_at, updated_at, completed_at, archived_at,
-  customer:customers(id, full_name, phone, line_id, preferred_language, notes),
-  vehicle:vehicles(id, make, model, year, license_plate, color, current_mileage),
+  customer:customers(id, full_name, phone, line_id, email, preferred_language, notes),
+  vehicle:vehicles(id, make, model, year, license_plate, color, last_service_date, current_mileage),
   mechanic:users(id, full_name),
   line_items:job_line_items(
     id, line_type, description, sku, quantity,
@@ -34,6 +34,13 @@ const DETAIL_SELECT = `
   invoice:invoices(id, invoice_number, status, total_amount, deposit_amount, paid_amount)
 `
 
+function withLegacyCompatibleDetail<T extends Record<string, unknown>>(job: T) {
+  return {
+    pickup_address: null,
+    ...job,
+  }
+}
+
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params
   const supabase = await createClient()
@@ -47,7 +54,7 @@ export async function GET(_request: Request, { params }: Params) {
     .single()
 
   if (error || !data) return notFoundError('Job')
-  return Response.json({ data })
+  return Response.json({ data: withLegacyCompatibleDetail(data) })
 }
 
 export async function PATCH(request: Request, { params }: Params) {
@@ -116,5 +123,5 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (error) return serverError(error.message)
   if (!data) return notFoundError('Job')
-  return Response.json({ data })
+  return Response.json({ data: withLegacyCompatibleDetail(data) })
 }
