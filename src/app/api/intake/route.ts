@@ -9,6 +9,15 @@ const RATE_LIMIT_MAX = 5 // max submissions per IP per window
 
 const ipCounts = new Map<string, { count: number; resetAt: number }>()
 
+// Normalize phone: strip all non-digits, convert +66 prefix to 0
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('66') && digits.length > 9) {
+    digits = '0' + digits.slice(2)
+  }
+  return digits
+}
+
 function checkRateLimit(ip: string): boolean {
   const now = Date.now()
   const entry = ipCounts.get(ip)
@@ -70,13 +79,16 @@ export async function POST(request: Request) {
   const d = parsed.data
   const supabase = createAdminClient()
 
+  // Normalize phone before matching
+  const phone = normalizePhone(d.phone)
+
   // 1. Upsert customer by phone number (phone is the natural key for intake)
   const { data: customer, error: customerError } = await supabase
     .from('customers')
     .upsert(
       {
         full_name: d.full_name,
-        phone: d.phone,
+        phone,
         line_id: d.line_id ?? null,
         preferred_language: d.preferred_language,
         consent_to_message: d.consent_to_message,
@@ -129,7 +141,7 @@ export async function POST(request: Request) {
   // 4. Record preferred date as a note on the job if provided
   if (d.preferred_date) {
     await supabase.from('jobs').update({
-      description: `${d.description}\n\nวันที่ต้องการ / Preferred date: ${d.preferred_date}`,
+      description: `${d.description}\n\nPreferred date (วันที่ต้องการ): ${d.preferred_date}`,
     }).eq('id', job.id)
   }
 

@@ -9,7 +9,9 @@
     "invoices": "ใบเสร็จ",
     "expenses": "ค่าใช้จ่าย",
     "reports": "รายงาน",
-    "logout": "ออกจากระบบ"
+    "logout": "ออกจากระบบ",
+    "messages": "ข้อความ",
+    "intake_qr": "QR รับรถ"
   },
   "buckets": {
     "new_requests": "คำขอใหม่",

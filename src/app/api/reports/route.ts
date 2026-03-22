@@ -235,5 +235,128 @@ export async function GET(request: Request) {
     })
   }
 
+  // ── CSV: EOD summary flat export ───────────────────────────────────────────
+  if (type === 'csv_eod') {
+    const [invoicesResult, jobsResult, expensesResult] = await Promise.all([
+      supabase
+        .from('invoices')
+        .select('status, total_amount, paid_amount, deposit_amount, revenue_stream, payment_method')
+        .eq('invoice_date', date)
+        .neq('status', 'void'),
+      supabase
+        .from('jobs')
+        .select('bucket')
+        .gte('created_at', `${date}T00:00:00Z`)
+        .lte('created_at', `${date}T23:59:59Z`),
+      supabase
+        .from('expenses')
+        .select('amount, category')
+        .eq('date', date),
+    ])
+
+    if (invoicesResult.error) return serverError(invoicesResult.error.message)
+    const invoices = invoicesResult.data ?? []
+    const jobs = jobsResult.data ?? []
+    const expenses = expensesResult.data ?? []
+
+    const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.paid_amount ?? i.total_amount), 0)
+    const totalDeposits = invoices.filter(i => i.status === 'deposit_paid').reduce((s, i) => s + (i.deposit_amount ?? 0), 0)
+    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
+
+    const rows: string[] = [
+      '"Metric","Value"',
+      `"Date","${date}"`,
+      `"Revenue Collected (THB)","${totalRevenue}"`,
+      `"Deposits Received (THB)","${totalDeposits}"`,
+      `"Expenses (THB)","${totalExpenses}"`,
+      `"Net Revenue (THB)","${totalRevenue - totalExpenses}"`,
+      `"Total Invoices","${invoices.length}"`,
+      `"Invoices Paid","${invoices.filter(i => i.status === 'paid').length}"`,
+      `"Invoices Deposit Paid","${invoices.filter(i => i.status === 'deposit_paid').length}"`,
+      `"Invoices Quote","${invoices.filter(i => i.status === 'quote').length}"`,
+      `"New Jobs","${jobs.length}"`,
+    ]
+
+    // Revenue by stream
+    const byStream = invoices.filter(i => i.status === 'paid').reduce<Record<string, number>>((acc, i) => {
+      const s = i.revenue_stream ?? 'unknown'
+      acc[s] = (acc[s] ?? 0) + (i.paid_amount ?? i.total_amount)
+      return acc
+    }, {})
+    for (const [stream, amt] of Object.entries(byStream)) {
+      rows.push(`"Revenue: ${stream} (THB)","${amt}"`)
+    }
+
+    // By payment method
+    const byMethod = invoices.filter(i => i.status === 'paid').reduce<Record<string, number>>((acc, i) => {
+      const m = i.payment_method ?? 'unknown'
+      acc[m] = (acc[m] ?? 0) + (i.paid_amount ?? i.total_amount)
+      return acc
+    }, {})
+    for (const [method, amt] of Object.entries(byMethod)) {
+      rows.push(`"Payment: ${method} (THB)","${amt}"`)
+    }
+
+    // Jobs by bucket
+    const byBucket = jobs.reduce<Record<string, number>>((acc, j) => {
+      acc[j.bucket] = (acc[j.bucket] ?? 0) + 1
+      return acc
+    }, {})
+    for (const [bucket, count] of Object.entries(byBucket)) {
+      rows.push(`"Jobs in ${bucket}","${count}"`)
+    }
+
+    // Expenses by category
+    const byCategory = expenses.reduce<Record<string, number>>((acc, e) => {
+      const cat = e.category ?? 'unknown'
+      acc[cat] = (acc[cat] ?? 0) + e.amount
+      return acc
+    }, {})
+    for (const [cat, amt] of Object.entries(byCategory)) {
+      rows.push(`"Expense: ${cat} (THB)","${amt}"`)
+    }
+
+    return new Response(rows.join('\n'), {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="eod_${date}.csv"`,
+      },
+    })
+  }
+
+  // ── CSV: Revenue breakdown ──────────────────────────────────────────────────
+  if (type === 'csv_revenue') {
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select('revenue_stream, total_amount, paid_amount, status, invoice_date, payment_method')
+      .gte('invoice_date', from)
+      .lte('invoice_date', to)
+      .neq('status', 'void')
+      .order('invoice_date', { ascending: true })
+
+    if (error) return serverError(error.message)
+
+    const rows = (invoices ?? []).map((inv) => {
+      const cols = [
+        inv.invoice_date,
+        inv.revenue_stream ?? '',
+        inv.status,
+        inv.total_amount,
+        inv.status === 'paid' ? (inv.paid_amount ?? inv.total_amount) : 0,
+        inv.payment_method ?? '',
+      ]
+      return cols.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')
+    })
+
+    const header = ['"Date"','"Revenue Stream"','"Status"','"Invoiced (THB)"','"Collected (THB)"','"Payment Method"'].join(',')
+
+    return new Response([header, ...rows].join('\n'), {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="revenue_${from}_${to}.csv"`,
+      },
+    })
+  }
+
   return Response.json({ error: { code: 'VALIDATION_ERROR', message: 'Unknown report type' } }, { status: 400 })
 }

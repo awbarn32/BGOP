@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +18,6 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { KanbanColumn } from '@/components/jobs/KanbanColumn'
 import { JobCard } from '@/components/jobs/JobCard'
-import { JobDrawer } from '@/components/jobs/JobDrawer'
 import { NewJobForm } from '@/components/jobs/NewJobForm'
 import { useToast } from '@/components/ui/Toast'
 import { subscribeToKanbanUpdates, unsubscribe } from '@/lib/supabase/realtime'
@@ -37,13 +37,13 @@ const REVENUE_STREAMS = [
 
 export default function BoardPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [jobs, setJobs] = useState<JobCardType[]>([])
   const [loading, setLoading] = useState(true)
   const [mechanics, setMechanics] = useState<Pick<User, 'id' | 'full_name'>[]>([])
 
   const [activeJob, setActiveJob] = useState<JobCardType | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
 
   // Board toolbar filters
@@ -228,15 +228,6 @@ export default function BoardPage() {
     }
   }
 
-  function handleJobUpdated(updated: JobCardType) {
-    // If archived, remove from board
-    if ('archived_at' in updated && (updated as { archived_at: string | null }).archived_at) {
-      setJobs((prev) => prev.filter((j) => j.id !== updated.id))
-    } else {
-      setJobs((prev) => prev.map((j) => (j.id === updated.id ? { ...j, ...updated } : j)))
-    }
-  }
-
   function handleJobCreated(job: JobCardType) {
     setCreateOpen(false)
     setJobs((prev) => [job, ...prev])
@@ -381,7 +372,7 @@ export default function BoardPage() {
                   <KanbanColumn
                     bucket={bucket}
                     jobs={jobsByBucket[bucket]}
-                    onCardClick={(job) => setSelectedJobId(job.id)}
+                    onCardClick={(job) => router.push(`/jobs/${job.id}`)}
                     canReorder={canReorder}
                     onPriorityChange={handlePriorityChange}
                   />
@@ -403,13 +394,6 @@ export default function BoardPage() {
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Job" size="lg">
         <NewJobForm onSuccess={handleJobCreated} onCancel={() => setCreateOpen(false)} />
       </Modal>
-
-      <JobDrawer
-        jobId={selectedJobId}
-        onClose={() => setSelectedJobId(null)}
-        onJobUpdated={handleJobUpdated}
-        mechanics={mechanics}
-      />
     </div>
   )
 }

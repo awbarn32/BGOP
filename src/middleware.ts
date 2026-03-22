@@ -3,7 +3,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 import type { UserRole } from '@/types/domain'
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/request', '/api/intake', '/api/webhooks/line']
+const PUBLIC_ROUTES = ['/login', '/request', '/quote', '/api/intake', '/api/webhooks/line']
 
 // Role-based default landing pages
 const ROLE_LANDING: Record<UserRole, string> = {

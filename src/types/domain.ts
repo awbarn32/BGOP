@@ -69,7 +69,15 @@ export type OwnershipStatus = 'customer_owned' | 'for_sale' | 'for_rent'
 export type ProductCategory = 'parts' | 'labour' | 'service_package'
 export type ProductUnit = 'each' | 'hour' | 'set' | 'litre' | 'metre'
 export type LineType = 'labour' | 'part'
-export type InvoiceStatus = 'quote' | 'approved' | 'deposit_paid' | 'pending' | 'paid' | 'void'
+export type InvoiceStatus =
+  | 'quote'
+  | 'pending_owner_approval'
+  | 'owner_declined'
+  | 'approved'
+  | 'deposit_paid'
+  | 'pending'
+  | 'paid'
+  | 'void'
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'promptpay' | 'credit_card' | 'other'
 export type ScopeChangeStatus = 'flagged' | 'pending' | 'approved' | 'declined'
 export type DriverOrderType = 'pickup' | 'delivery'
@@ -84,6 +92,10 @@ export type DriverOrderStatus =
   | 'cancelled'
 export type MessageStatus = 'sent' | 'failed' | 'delivered'
 export type ReminderType = 'service' | 'ar'
+export type DiscountType = 'percent' | 'fixed'
+export type DiscountApplicableTo = 'all' | 'labour' | 'parts' | 'service_package' | 'specific_streams'
+export type VehicleReminderDecision = 'sent' | 'skipped'
+export type VehicleReminderType = '90_day' | '180_day'
 
 // ============================================================
 // Entity types
@@ -130,6 +142,7 @@ export interface Vehicle {
   last_service_date: string | null
   last_service_mileage: number | null
   current_mileage: number | null
+  primary_photo_url: string | null   // F1
   created_at: string
   updated_at: string
 }
@@ -188,6 +201,7 @@ export interface Job {
   intake_mileage: number | null
   completion_mileage: number | null
   intake_photos: string[] | null
+  mechanic_photos: string[] | null   // F1
   owner_notify_threshold_thb: number
   created_at: string
   updated_at: string
@@ -221,6 +235,13 @@ export interface JobLineItem {
   dlt_passthrough: boolean
   is_scope_change: boolean
   scope_approved_at: string | null
+  // F4 — Discounts
+  discount_id: string | null
+  discount_applied_value: number | null
+  // F6 — Mechanic checklist
+  mechanic_completed: boolean
+  mechanic_completed_at: string | null
+  mechanic_completed_by: string | null
   created_at: string
 }
 
@@ -240,6 +261,11 @@ export interface Invoice {
   payment_method: PaymentMethod | null
   paid_at: string | null
   notes: string | null
+  // F5 — Owner approval
+  submitted_for_approval_at: string | null
+  approved_by: string | null
+  approved_at: string | null
+  owner_decline_reason: string | null
   created_at: string
   updated_at: string
 }
@@ -267,6 +293,9 @@ export interface DriverWorkOrder {
   delivery_address: string | null
   scheduled_date: string | null
   notes: string | null
+  // F1 — Photo completion flags
+  pickup_photos_complete: boolean
+  delivery_photos_complete: boolean
   created_at: string
   updated_at: string
 }
@@ -289,6 +318,54 @@ export interface ReminderLog {
   channel: string
   sent_at: string
   reminder_type: ReminderType
+}
+
+// F4 — Discounts Module
+export interface Discount {
+  id: string
+  name: string                            // Bilingual: 'Thai / English'
+  description: string | null
+  discount_type: DiscountType
+  discount_value: number
+  applicable_to: DiscountApplicableTo
+  applicable_streams: string[] | null
+  min_invoice_amount: number | null
+  max_discount_amount: number | null
+  preapproved: boolean
+  active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// F3 — Vehicle Reminder Log
+export interface VehicleReminderLog {
+  id: string
+  vehicle_id: string
+  customer_id: string
+  reminder_type: VehicleReminderType
+  eligible_since: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+  decision: VehicleReminderDecision | null
+  sent_at: string | null
+  channel: string
+  message_content: string | null
+  created_at: string
+  // Joined relations (when fetched with joins)
+  vehicle?: {
+    make: string
+    model: string
+    year: number
+    color: string | null
+    primary_photo_url: string | null
+    last_service_date: string | null
+  }
+  customer?: {
+    full_name: string
+    line_id: string | null
+    preferred_language: string | null
+  }
 }
 
 export interface Expense {
@@ -347,6 +424,8 @@ export type Database = {
       message_log: { Row: MessageLog; Insert: Omit<MessageLog, 'id' | 'sent_at'>; Update: never }
       reminder_log: { Row: ReminderLog; Insert: Omit<ReminderLog, 'id' | 'sent_at'>; Update: never }
       expenses: { Row: Expense; Insert: Omit<Expense, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Expense, 'id'>> }
+      discounts: { Row: Discount; Insert: Omit<Discount, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Discount, 'id'>> }
+      vehicle_reminder_log: { Row: VehicleReminderLog; Insert: Omit<VehicleReminderLog, 'id' | 'created_at'>; Update: Partial<Omit<VehicleReminderLog, 'id'>> }
     }
     Functions: Record<string, never>
     Enums: Record<string, never>

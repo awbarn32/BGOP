@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> }
 
 const CreateScopeChangeSchema = z.object({
   description: z.string().min(1).max(2000),
-  amount_thb: z.number().nonnegative(),
+  amount_thb: z.number().nonnegative().optional().default(0),
   mechanic_notes: z.string().max(2000).nullable().optional(),
 })
 

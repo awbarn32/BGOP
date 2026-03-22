@@ -125,6 +125,12 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   const [depositMethod, setDepositMethod] = useState<'cash' | 'bank_transfer' | 'promptpay' | 'credit_card' | 'other'>('bank_transfer')
   const [depositSaving, setDepositSaving] = useState(false)
 
+  // Scope change review state (PA sets amounts when approving)
+  const [scopeAmounts, setScopeAmounts] = useState<Record<string, string>>({})
+
+  // F5 — Owner approval submit
+  const [submittingApproval, setSubmittingApproval] = useState(false)
+
   // Driver work orders state
   interface WorkOrder {
     id: string
@@ -362,11 +368,13 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
   async function handleScopeAction(scopeId: string, action: 'approve' | 'decline') {
     const label = action === 'approve' ? 'Approve' : 'Decline'
     if (!confirm(`${label} this scope change?`)) return
+    const amountStr = scopeAmounts[scopeId] ?? ''
+    const amount_thb = amountStr !== '' ? parseFloat(amountStr) : undefined
     try {
       const res = await fetch(`/api/scope-changes/${scopeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...(amount_thb !== undefined ? { amount_thb } : {}) }),
       })
       const json = await res.json()
       if (!res.ok) { toast(json.error?.message ?? 'Failed', 'error'); return }
@@ -444,6 +452,27 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
       const refreshed = await fetch(`/api/jobs/${job.id}`)
       const rJson = await refreshed.json()
       setJob(rJson.data)
+    }
+  }
+
+  // F5 — Submit quote for Owner approval
+  async function handleSubmitForApproval() {
+    if (!job?.invoice?.[0]) return
+    if (!confirm('Submit this quote for Owner approval? The customer will NOT receive it yet.')) return
+    setSubmittingApproval(true)
+    try {
+      const res = await fetch(`/api/invoices/${job.invoice[0].id}/submit-approval`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) { toast(json.error?.message ?? 'Failed to submit', 'error'); return }
+      const refreshed = await fetch(`/api/jobs/${job.id}`)
+      const rJson = await refreshed.json()
+      setJob(rJson.data)
+      onJobUpdated(rJson.data)
+      toast('Submitted for Owner approval ✓', 'success')
+    } catch {
+      toast('Network error', 'error')
+    } finally {
+      setSubmittingApproval(false)
     }
   }
 
@@ -569,6 +598,8 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
               const inv = job.invoice?.[0] ?? null
               const INVOICE_STATUS_STYLES: Record<string, string> = {
                 quote: 'bg-blue-900/40 text-blue-300',
+                pending_owner_approval: 'bg-amber-900/50 text-amber-300',
+                owner_declined: 'bg-red-900/50 text-red-300',
                 approved: 'bg-emerald-900/40 text-emerald-300',
                 deposit_paid: 'bg-teal-900/40 text-teal-300',
                 pending: 'bg-amber-900/40 text-amber-300',
@@ -577,6 +608,8 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
               }
               const INVOICE_STATUS_LABELS: Record<string, string> = {
                 quote: 'Quote — Draft',
+                pending_owner_approval: '⏳ Awaiting Owner Approval',
+                owner_declined: '✕ Declined by Owner',
                 approved: 'Confirmed',
                 deposit_paid: 'Deposit Paid',
                 pending: 'Awaiting Payment',
@@ -691,14 +724,19 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                   {job.line_items.length > 0 ? (
                     <div className="space-y-1.5 font-mono">
                       {job.line_items.map((li) => (
-                        <div key={li.id} className="flex items-center justify-between text-xs group">
+                        <div key={li.id} className={`flex items-center justify-between text-xs group ${li.mechanic_completed ? 'opacity-60' : ''}`}>
                           <div className="flex items-center gap-1.5 min-w-0 font-sans">
-                            <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
-                              li.line_type === 'labour' ? 'bg-blue-900/40 text-blue-300' : 'bg-amber-900/40 text-amber-300'
-                            }`}>
-                              {li.line_type === 'labour' ? 'L' : 'P'}
-                            </span>
-                            <span className="text-gray-300 truncate">
+                            {/* F6 — mechanic completion indicator */}
+                            {li.mechanic_completed ? (
+                              <span className="text-emerald-400 flex-shrink-0 text-sm" title="Completed by mechanic">✓</span>
+                            ) : (
+                              <span className={`px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
+                                li.line_type === 'labour' ? 'bg-blue-900/40 text-blue-300' : 'bg-amber-900/40 text-amber-300'
+                              }`}>
+                                {li.line_type === 'labour' ? 'L' : 'P'}
+                              </span>
+                            )}
+                            <span className={`truncate ${li.mechanic_completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>
                               {li.description.includes(' / ') ? li.description.split(' / ')[1] : li.description}
                               {li.quantity !== 1 && ` ×${li.quantity}`}
                             </span>
@@ -778,16 +816,55 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                     </div>
                   )}
 
+                  {/* F5 — Approval status banners */}
+                  {inv?.status === 'pending_owner_approval' && (
+                    <div className="mt-3 p-3 bg-amber-900/20 border border-amber-800/40 rounded-xl">
+                      <p className="text-sm text-amber-300 font-medium">⏳ Awaiting Owner Approval</p>
+                      {inv.submitted_for_approval_at && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Submitted {new Date(inv.submitted_for_approval_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {inv?.status === 'owner_declined' && (
+                    <div className="mt-3 p-3 bg-red-900/20 border border-red-800/40 rounded-xl">
+                      <p className="text-sm text-red-300 font-medium">✕ Declined by Owner</p>
+                      {inv.owner_decline_reason && (
+                        <p className="text-xs text-red-200 mt-1">{inv.owner_decline_reason}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Revise and resubmit below.</p>
+                    </div>
+                  )}
+
+                  {/* F7 — Language indicator */}
+                  {inv && ['quote', 'owner_declined'].includes(inv.status) && job.line_items.length > 0 && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      {job.customer.line_id ? (
+                        <span>
+                          🌐 Quote will be sent in:{' '}
+                          <span className="text-gray-300 font-medium">
+                            {job.customer.preferred_language === 'th' ? 'Thai' :
+                             job.customer.preferred_language === 'en' ? 'English' : 'Bilingual'}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-500">⚠️ No LINE ID — quote can only be sent as PDF</span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Quote action buttons */}
                   {inv && inv.status !== 'void' && !recordingDeposit && (
                     <div className="mt-3 flex gap-2">
-                      {job.status !== 'quote_sent' && job.status !== 'confirmed' && inv.status === 'quote' && job.line_items.length > 0 && (
+                      {/* F5 — Submit for Owner Approval (replaces direct Send Quote) */}
+                      {['quote', 'owner_declined'].includes(inv.status) && job.line_items.length > 0 && (
                         <button
-                          onClick={handleSendQuote}
-                          disabled={saving}
-                          className="flex-1 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
+                          onClick={handleSubmitForApproval}
+                          disabled={submittingApproval}
+                          className="flex-1 py-2 rounded-xl bg-amber-700 hover:bg-amber-600 disabled:opacity-40 text-sm text-white font-semibold transition-colors"
                         >
-                          📤 Send Quote
+                          {submittingApproval ? 'Submitting…' : '📤 Submit for Owner Approval'}
                         </button>
                       )}
                       {(job.status === 'quote_sent' || inv.status === 'quote') && !inv.deposit_amount && (
@@ -1095,12 +1172,28 @@ export function JobDrawer({ jobId, onClose, onJobUpdated, mechanics }: JobDrawer
                     }`}>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <p className="text-sm text-gray-200 flex-1">{sc.description}</p>
-                        <span className="font-mono text-sm text-white flex-shrink-0">
-                          ฿{sc.amount_thb.toLocaleString()}
-                        </span>
+                        {sc.status !== 'flagged' && (
+                          <span className="font-mono text-sm text-white flex-shrink-0">
+                            ฿{sc.amount_thb.toLocaleString()}
+                          </span>
+                        )}
                       </div>
                       {sc.mechanic_notes && (
                         <p className="text-xs text-gray-500 mb-2 italic">{sc.mechanic_notes}</p>
+                      )}
+                      {sc.status === 'flagged' && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs text-gray-400 flex-shrink-0">Amount (฿)</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            placeholder="0"
+                            value={scopeAmounts[sc.id] ?? ''}
+                            onChange={(e) => setScopeAmounts((prev) => ({ ...prev, [sc.id]: e.target.value }))}
+                            className="flex-1 px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm font-mono focus:outline-none focus:ring-1 focus:ring-orange-500"
+                          />
+                        </div>
                       )}
                       <div className="flex items-center justify-between">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

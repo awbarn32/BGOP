@@ -55,7 +55,12 @@ export default function ReportsPage() {
 
   useEffect(() => { fetchReport() }, [fetchReport])
 
-  const csvUrl = `/api/reports?type=csv_invoices&from=${revFrom}&to=${revTo}`
+  const csvUrls = {
+    eod: `/api/reports?type=csv_eod&date=${date}`,
+    ar_aging: `/api/reports?type=csv_invoices&from=${new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}`,
+    revenue: `/api/reports?type=csv_revenue&from=${revFrom}&to=${revTo}`,
+  }
+  const csvLabel = { eod: '↓ CSV EOD', ar_aging: '↓ CSV AR', revenue: '↓ CSV Revenue' }
 
   return (
     <div className="flex flex-col h-full">
@@ -63,10 +68,10 @@ export default function ReportsPage() {
         title="Reports"
         actions={
           <a
-            href={csvUrl}
+            href={csvUrls[tab]}
             className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-gray-300 transition-colors"
           >
-            ↓ CSV Invoices
+            {csvLabel[tab]}
           </a>
         }
       />

@@ -36,9 +36,8 @@ export function JobCard({ job, onClick, isDragOverlay = false, position, canReor
     transition,
   }
 
-  const englishDesc = job.description.includes(' / ')
-    ? job.description.split(' / ')[1].slice(0, 60)
-    : job.description.slice(0, 60)
+  // Show first line of description, truncated to 60 chars
+  const englishDesc = (job.description.split('\n')[0] || '').slice(0, 60)
 
   const make = MAKE_SHORT[job.vehicle.make] ?? job.vehicle.make.slice(0, 3).toUpperCase()
   const vehicleLabel = `${job.vehicle.year} ${make} ${job.vehicle.model}`

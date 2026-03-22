@@ -24,6 +24,7 @@ type Params = { params: Promise<{ id: string }> }
 const PatchSchema = z.object({
   action: z.enum(['approve', 'decline']),
   pa_notes: z.string().max(2000).nullable().optional(),
+  amount_thb: z.number().nonnegative().optional(),
 })
 
 export async function PATCH(request: Request, { params }: Params) {
@@ -44,7 +45,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const parsed = PatchSchema.safeParse(body)
   if (!parsed.success) return validationError('Validation failed', parsed.error.flatten())
 
-  const { action, pa_notes } = parsed.data
+  const { action, pa_notes, amount_thb } = parsed.data
 
   // Fetch the scope change
   const { data: sc } = await supabase
@@ -61,14 +62,22 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const newStatus = action === 'approve' ? 'approved' : 'declined'
 
+  // PA can set/override the amount when approving
+  const finalAmount = amount_thb ?? sc.amount_thb
+
+  const updatePayload: Record<string, unknown> = {
+    status: newStatus,
+    reviewed_by: user.id,
+    reviewed_at: new Date().toISOString(),
+    pa_notes: pa_notes ?? null,
+  }
+  if (amount_thb !== undefined) {
+    updatePayload.amount_thb = amount_thb
+  }
+
   const { data: updated, error } = await supabase
     .from('scope_changes')
-    .update({
-      status: newStatus,
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
-      pa_notes: pa_notes ?? null,
-    })
+    .update(updatePayload)
     .eq('id', id)
     .select()
     .single()
@@ -82,7 +91,7 @@ export async function PATCH(request: Request, { params }: Params) {
       line_type: 'labour',
       description: sc.description,
       quantity: 1,
-      sale_price: sc.amount_thb,
+      sale_price: finalAmount,
       cost_price: null,
       cost_estimated: true,
       is_scope_change: true,
@@ -99,7 +108,7 @@ export async function PATCH(request: Request, { params }: Params) {
     if (invoice) {
       await supabase
         .from('invoices')
-        .update({ total_amount: invoice.total_amount + sc.amount_thb })
+        .update({ total_amount: invoice.total_amount + finalAmount })
         .eq('id', invoice.id)
     }
   }

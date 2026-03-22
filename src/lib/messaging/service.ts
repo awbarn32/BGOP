@@ -14,6 +14,29 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { pushMessage, isDemoMode } from '@/lib/line/client'
 import type { LineMessage } from '@/lib/line/client'
 
+// ── Language helpers (F7) ─────────────────────────────────────────────────────
+
+/**
+ * F7 — Selects the delivery language based on customer preference.
+ * 'th' → Thai only, 'en' → English only, null/undefined → bilingual
+ */
+export function selectLanguage(preferredLanguage: string | null | undefined): 'th' | 'en' | 'bilingual' {
+  if (preferredLanguage === 'th') return 'th'
+  if (preferredLanguage === 'en') return 'en'
+  return 'bilingual'
+}
+
+/**
+ * Parses a bilingual string 'Thai / English' and returns the appropriate variant.
+ */
+export function parseBilingual(text: string, lang: 'th' | 'en' | 'bilingual'): string {
+  if (!text.includes(' / ')) return text
+  const [thai, english] = text.split(' / ', 2)
+  if (lang === 'th') return thai
+  if (lang === 'en') return english
+  return text // bilingual — keep full string
+}
+
 // ── AI Translation ────────────────────────────────────────────────────────────
 
 /**

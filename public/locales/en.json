@@ -9,7 +9,9 @@
     "invoices": "Invoices",
     "expenses": "Expenses",
     "reports": "Reports",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "messages": "Messages",
+    "intake_qr": "Intake QR"
   },
   "buckets": {
     "new_requests": "New Requests",
