@@ -86,7 +86,10 @@ export function CustomerForm({ customer, onSuccess, onCancel }: CustomerFormProp
 
       const json = await res.json()
       if (!res.ok) {
-        toast(json.error?.message ?? 'Failed to save customer', 'error')
+        console.error('Customer save error:', json.error)
+        const errMsg = json.error?.message ?? 'Failed to save customer'
+        const details = json.error?.details ? JSON.stringify(json.error.details) : ''
+        toast(`${errMsg} ${details}`.trim(), 'error')
         return
       }
 

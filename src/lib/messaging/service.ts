@@ -5,16 +5,98 @@
  * 1. Consent is verified (consent_to_message = true AND line_id present)
  * 2. Rate limiting is respected (max 3 automated messages per job)
  * 3. Messages are logged to message_log
- * 4. AI translation via GPT-5 mini is available for PA ↔ customer messages
+ * 4. AI translation via Claude is available for PA ↔ customer messages
  * 5. Demo mode suppresses actual sends
  */
 
+import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pushMessage, isDemoMode } from '@/lib/line/client'
-import { recordConversationMessage } from '@/lib/messaging/conversations'
-import { persistMessageLocalization } from '@/lib/messaging/ai'
-import { isLocalizationReady } from '@/lib/messaging/localization'
 import type { LineMessage } from '@/lib/line/client'
+
+// ── Language helpers (F7) ─────────────────────────────────────────────────────
+
+/**
+ * F7 — Selects the delivery language based on customer preference.
+ * 'th' → Thai only, 'en' → English only, null/undefined → bilingual
+ */
+export function selectLanguage(preferredLanguage: string | null | undefined): 'th' | 'en' | 'bilingual' {
+  if (preferredLanguage === 'th') return 'th'
+  if (preferredLanguage === 'en') return 'en'
+  return 'bilingual'
+}
+
+/**
+ * Parses a bilingual string 'Thai / English' and returns the appropriate variant.
+ */
+export function parseBilingual(text: string, lang: 'th' | 'en' | 'bilingual'): string {
+  if (!text.includes(' / ')) return text
+  const [thai, english] = text.split(' / ', 2)
+  if (lang === 'th') return thai
+  if (lang === 'en') return english
+  return text // bilingual — keep full string
+}
+
+// ── AI Translation ────────────────────────────────────────────────────────────
+
+/**
+ * Translate text using Claude. Used for PA ↔ customer messaging.
+ * Returns the translated text, or the original if translation fails.
+ */
+export async function translateText(
+  text: string,
+  targetLanguage: 'th' | 'en'
+): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.warn('[messaging] OPENAI_API_KEY not set — skipping translation')
+    return text
+  }
+
+  try {
+    const client = new OpenAI({ apiKey })
+    const langLabel = targetLanguage === 'th' ? 'Thai' : 'English'
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: `Translate the following message to ${langLabel}. Return ONLY the translated text — no explanations, no quotes, no labels.\n\n${text}`,
+        },
+      ],
+    })
+
+    const translated = response.choices[0]?.message?.content?.trim()
+    return translated ?? text
+  } catch (err) {
+    console.error('[messaging] translation error', err)
+    return text
+  }
+}
+
+/**
+ * Build a translated message targeting a single language.
+ *
+ * Returns a formatted string:
+ *   🔧 Butler Garage
+ *
+ *   [Translated Text]
+ *
+ *   —
+ *   Butler Garage | Bangkok
+ */
+export async function buildTranslatedMessage(
+  originalText: string,
+  originalLanguage: 'th' | 'en',
+  recipientLanguage: 'th' | 'en'
+): Promise<string> {
+  if (originalLanguage === recipientLanguage) {
+    return originalText
+  }
+  return await translateText(originalText, recipientLanguage)
+}
 
 // ── Core send function ────────────────────────────────────────────────────────
 
@@ -23,8 +105,6 @@ interface SendOptions {
   jobId?: string
   messageType: string
   messages: LineMessage[]
-  senderRole?: 'owner' | 'pa' | 'bot'
-  sentByUserId?: string
   /** Skip consent + rate-limit checks (for scope change flex messages where customer already engaged) */
   skipChecks?: boolean
 }
@@ -34,8 +114,6 @@ interface SendResult {
   skipped?: 'no_line_id' | 'no_consent' | 'rate_limit'
   error?: string
   demo?: boolean
-  threadId?: string
-  messageId?: string
 }
 
 export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
@@ -85,11 +163,7 @@ export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
 
   // ── 3. Send ─────────────────────────────────────────────────────────────────
   const messageContent = opts.messages
-    .map((m) => {
-      if (m.type === 'text') return m.text
-      if (m.type === 'image') return '[Photo]'
-      return `[Flex: ${m.altText}]`
-    })
+    .map((m) => (m.type === 'text' ? m.text : `[Flex: ${m.altText}]`))
     .join(' | ')
 
   const result = await pushMessage(customer.line_id, opts.messages)
@@ -108,27 +182,7 @@ export async function sendLineMessage(opts: SendOptions): Promise<SendResult> {
     return { ok: false, error: result.error }
   }
 
-  const recorded = await recordConversationMessage({
-    lineUserId: customer.line_id,
-    customerId: opts.customerId,
-    direction: 'outbound',
-    senderRole: opts.senderRole ?? 'pa',
-    messageType: opts.messageType,
-    bodyText: messageContent,
-    activeJobId: opts.jobId ?? null,
-    sentByUserId: opts.sentByUserId,
-    skipAuditLog: true,
-  }).catch((err) => {
-    console.warn('[messaging] conversation record failed', err)
-    return null
-  })
-
-  return {
-    ok: true,
-    demo: isDemoMode(),
-    threadId: recorded?.threadId,
-    messageId: recorded?.messageId,
-  }
+  return { ok: true, demo: isDemoMode() }
 }
 
 // ── PA → Customer direct message (with AI translation) ───────────────────────
@@ -141,83 +195,16 @@ interface DirectMessageOptions {
   senderLanguage: 'th' | 'en'
   /** Language the customer will receive the message in */
   recipientLanguage: 'th' | 'en'
-  sentByUserId?: string
 }
 
 export async function sendDirectMessage(opts: DirectMessageOptions): Promise<SendResult> {
-  const supabase = createAdminClient()
-  const { data: thread } = await supabase
-    .from('conversation_threads')
-    .select('id')
-    .eq('customer_id', opts.customerId)
-    .order('latest_message_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const translated = await buildTranslatedMessage(opts.text, opts.senderLanguage, opts.recipientLanguage)
 
-  let contextMessages:
-    | Array<{
-        id: string
-        direction: 'inbound' | 'outbound' | 'system'
-        sender_role: string | null
-        message_type: string | null
-        body_text: string | null
-        sent_at: string
-      }>
-    | undefined
-
-  if (thread?.id) {
-    const { data: recentMessages } = await supabase
-      .from('conversation_messages')
-      .select('id, direction, sender_role, message_type, body_text, sent_at')
-      .eq('thread_id', thread.id)
-      .order('sent_at', { ascending: false })
-      .limit(6)
-
-    contextMessages = (recentMessages ?? []).reverse()
-  }
-
-  const localization = await persistMessageLocalization({
-    threadId: thread?.id ?? null,
-    originalText: opts.text,
-    originalLanguage: opts.senderLanguage,
-    counterpartLanguage: opts.recipientLanguage,
-    contextMessages,
-  })
-
-  const textForCustomer =
-    opts.recipientLanguage === 'th'
-      ? localization?.text_th ?? opts.text
-      : localization?.text_en ?? opts.text
-
-  if (opts.senderLanguage !== opts.recipientLanguage && !isLocalizationReady(localization ?? null)) {
-    return {
-      ok: false,
-      error: `Translation unavailable. Add a valid OPENAI_API_KEY or send the message in ${opts.recipientLanguage.toUpperCase()} manually.`,
-    }
-  }
-
-  const result = await sendLineMessage({
+  return sendLineMessage({
     customerId: opts.customerId,
     jobId: opts.jobId,
     messageType: 'direct_message',
-    messages: [{ type: 'text', text: textForCustomer }],
-    senderRole: 'pa',
-    sentByUserId: opts.sentByUserId,
+    messages: [{ type: 'text', text: translated }],
     skipChecks: false,
   })
-
-  if (!result.ok || !result.messageId || !result.threadId) {
-    return result
-  }
-
-  await persistMessageLocalization({
-    threadId: result.threadId,
-    messageId: result.messageId,
-    originalText: opts.text,
-    originalLanguage: opts.senderLanguage,
-    counterpartLanguage: opts.recipientLanguage,
-    localization: localization ?? undefined,
-  })
-
-  return result
 }

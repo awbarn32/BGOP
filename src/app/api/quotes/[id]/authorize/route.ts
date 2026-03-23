@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendLineMessage } from '@/lib/messaging/service'
 import { notFoundError, serverError } from '@/lib/utils/validation'
-import { transitionJob } from '@/lib/jobs/lifecycle'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -26,34 +25,21 @@ export async function POST(_request: Request, { params }: Params) {
 
   // 2. Prevent re-authorization if already confirmed
   const alreadyConfirmed = [
-    'confirmed', 'awaiting_drop_off', 'driver_assigned', 'picked_up', 'in_transit',
-    'received_at_shop', 'awaiting_assignment', 'awaiting_parts', 'awaiting_approval',
-    'work_started', 'paused_parts', 'paused_approval', 'work_completed',
-    'awaiting_pickup', 'driver_assigned_delivery', 'out_for_delivery', 'returned_to_customer',
-    'archived'
+    'confirmed', 'awaiting_drop_off', 'work_started', 'work_completed', 'archived'
   ].includes(job.status)
 
   if (alreadyConfirmed) {
     return Response.json({ message: 'Already confirmed' })
   }
 
-  const { error: invoiceError } = await supabase
-    .from('invoices')
-    .update({ status: 'approved' })
-    .eq('job_id', id)
-    .eq('status', 'quote')
+  // 3. Update the job status
+  const { error: updateError } = await supabase
+    .from('jobs')
+    .update({ status: 'confirmed' })
+    .eq('id', id)
 
-  if (invoiceError) return serverError(invoiceError.message)
-
-  try {
-    await transitionJob({
-      supabase,
-      jobId: id,
-      toBucket: 'new_requests',
-      toStatus: 'confirmed',
-    })
-  } catch (error) {
-    return serverError(error instanceof Error ? error.message : 'Failed to confirm job')
+  if (updateError) {
+    return serverError(updateError.message)
   }
 
   // 4. Send a "Thank You" message via LINE if they have a line_id

@@ -282,6 +282,30 @@ export function JobDrawer({
     await transition(job.bucket, newStatus)
   }
 
+  async function handleSendQuote() {
+    if (!job) return
+    if (!confirm('Mark quote as sent and update job status to Quote Sent?')) return
+    await patch({ status: 'quote_sent' as JobStatus })
+  }
+
+  async function handleConfirmJob() {
+    if (!job) return
+    const inv = job.invoice?.[0]
+    if (!confirm('Confirm the job? This marks the customer as approved and locks the quote.')) return
+    await patch({ status: 'confirmed' as JobStatus })
+    if (inv) {
+      await fetch(`/api/invoices/${inv.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' }),
+      })
+      const refreshed = await fetch(`/api/jobs/${job.id}`)
+      const rJson = await refreshed.json()
+      setJob(rJson.data)
+      onJobUpdated?.(rJson.data)
+    }
+  }
+
   async function handleMechanicChange(mechanicId: string) {
     setMechanicEdit(mechanicId)
     await patch({ mechanic_id: mechanicId || null })
@@ -972,6 +996,35 @@ export function JobDrawer({
                       </tfoot>
                     </table>
                   </div>
+
+                  {/* Quote action buttons */}
+                  {currentInvoice && currentInvoice.status !== 'void' && (
+                    <div className="mt-4 flex gap-3">
+                      {job.status !== 'quote_sent' && job.status !== 'confirmed' && currentInvoice.status === 'quote' && job.line_items.length > 0 && (
+                        <button
+                          onClick={handleSendQuote}
+                          disabled={saving}
+                          className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-sm text-white font-semibold transition-colors shadow-sm"
+                        >
+                          📤 Mark Quote as Sent
+                        </button>
+                      )}
+                      {job.status === 'quote_sent' && (
+                        <button
+                          onClick={handleConfirmJob}
+                          disabled={saving}
+                          className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-sm text-white font-semibold transition-colors shadow-sm"
+                        >
+                          ✓ Confirm Job
+                        </button>
+                      )}
+                      {currentInvoice.status === 'approved' && (
+                        <div className="flex-1 text-center py-3 text-sm text-emerald-400 font-semibold bg-emerald-950/30 rounded-2xl border border-emerald-800/50">
+                          ✓ Job Confirmed
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </section>
 
                 <section id="job-contact" className="rounded-3xl border border-gray-800 bg-gray-900 p-5 shadow-sm">

@@ -7,7 +7,6 @@ import {
   notFoundError,
   serverError,
 } from '@/lib/utils/validation'
-import { syncJobFromDriverOrder } from '@/lib/jobs/lifecycle'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -47,7 +46,7 @@ export async function PATCH(request: Request, { params }: Params) {
   // Fetch current order
   const { data: current, error: fetchError } = await supabase
     .from('driver_work_orders')
-    .select('id, status, driver_id, job_id, order_type')
+    .select('id, status, driver_id')
     .eq('id', id)
     .single()
 
@@ -84,17 +83,5 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (error) return serverError(error.message)
   if (!data) return notFoundError('Work order')
-
-  try {
-    await syncJobFromDriverOrder({
-      supabase,
-      jobId: current.job_id,
-      orderType: current.order_type,
-      orderStatus: parsed.data.status,
-    })
-  } catch {
-    // Do not fail the driver update if the job is already ahead of the work-order state.
-  }
-
   return Response.json({ data })
 }

@@ -18,7 +18,6 @@ import {
   validationError,
   serverError,
 } from '@/lib/utils/validation'
-import { transitionJob } from '@/lib/jobs/lifecycle'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -112,21 +111,6 @@ export async function PATCH(request: Request, { params }: Params) {
         .update({ total_amount: invoice.total_amount + finalAmount })
         .eq('id', invoice.id)
     }
-  }
-
-  const { data: job } = await supabase
-    .from('jobs')
-    .select('bucket, status')
-    .eq('id', sc.job_id)
-    .single()
-
-  if (job?.bucket === 'wip' && job.status === 'paused_approval') {
-    await transitionJob({
-      supabase,
-      jobId: sc.job_id,
-      toBucket: 'wip',
-      toStatus: 'work_started',
-    }).catch(() => {})
   }
 
   return Response.json({ data: updated })

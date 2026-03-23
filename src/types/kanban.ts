@@ -10,7 +10,6 @@ export interface JobCard {
   revenue_stream: RevenueStream | null
   logistics_type: LogisticsType | null
   mechanic_id: string | null
-  intake_photos: string[] | null
   owner_notify_threshold_thb: number
   created_at: string
   updated_at: string

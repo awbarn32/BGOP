@@ -10,11 +10,12 @@ import type { JobCard as JobCardType } from '@/types/kanban'
 interface KanbanColumnProps {
   bucket: Bucket
   jobs: JobCardType[]
+  onCardClick: (job: JobCardType) => void
   canReorder?: boolean
   onPriorityChange?: (jobId: string, direction: 'up' | 'down') => void
 }
 
-export function KanbanColumn({ bucket, jobs, canReorder, onPriorityChange }: KanbanColumnProps) {
+export function KanbanColumn({ bucket, jobs, onCardClick, canReorder, onPriorityChange }: KanbanColumnProps) {
   const { isOver, setNodeRef } = useDroppable({ id: bucket })
   const config = BUCKET_CONFIG[bucket]
 
@@ -47,6 +48,7 @@ export function KanbanColumn({ bucket, jobs, canReorder, onPriorityChange }: Kan
             <JobCard
               key={job.id}
               job={job}
+              onClick={onCardClick}
               position={idx + 1}
               canReorder={canReorder}
               isFirst={idx === 0}

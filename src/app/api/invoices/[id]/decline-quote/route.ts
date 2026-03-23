@@ -83,7 +83,7 @@ export async function POST(
         .not('line_id', 'is', null)
 
       if (paUsers && paUsers.length > 0 && job) {
-        const j = job as unknown as { customer: { full_name: string }; vehicle: { make: string; model: string; year: number } }
+        const j = job as { customer: { full_name: string }; vehicle: { make: string; model: string; year: number } }
         const msgText =
           `🔧 Butler Garage — Quote Declined\n\n` +
           `Customer: ${j.customer.full_name}\n` +

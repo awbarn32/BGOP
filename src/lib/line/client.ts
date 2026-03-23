@@ -31,13 +31,7 @@ export interface FlexMessage {
   contents: Record<string, unknown>
 }
 
-export interface ImageMessage {
-  type: 'image'
-  originalContentUrl: string
-  previewImageUrl: string
-}
-
-export type LineMessage = TextMessage | FlexMessage | ImageMessage
+export type LineMessage = TextMessage | FlexMessage
 
 export interface PushResult {
   ok: boolean

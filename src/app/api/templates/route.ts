@@ -1,4 +1,4 @@
-import { createClient, getSessionUser } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import {
   CreateTemplateSchema,
   validationError,
@@ -9,7 +9,7 @@ import {
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const user = await getSessionUser(supabase)
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return unauthorizedError()
 
   const { searchParams } = new URL(request.url)
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const user = await getSessionUser(supabase)
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return unauthorizedError()
 
   const role = user.app_metadata?.role
