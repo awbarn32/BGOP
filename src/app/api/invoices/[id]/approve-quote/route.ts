@@ -71,7 +71,7 @@ export async function POST(
   }
 
   // Also update the job status to quote_sent (quote was approved and is now going to customer)
-  const job = invoice.job as {
+  const job = invoice.job as unknown as {
     id: string
     status: string
     customer: { id: string; full_name: string; line_id: string | null; preferred_language: string | null; consent_to_message: boolean }

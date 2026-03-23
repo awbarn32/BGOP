@@ -102,8 +102,6 @@ export default function RemindersPage() {
     fetchReminders()
   }, [fetchReminders])
 
-  const pendingCount = reminders.filter((r) => r.decision === null).length
-
   const filteredReminders = reminders.filter((r) => {
     if (tab !== 'pending') return true
     if (dayFilter === '90') return r.reminder_type === '90_day'
